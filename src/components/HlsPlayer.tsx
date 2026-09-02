@@ -73,8 +73,14 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         maxBufferHole: 0.5,
         highBufferWatchdogPeriod: 2,
         startLevel: -1,
-        xhrSetup: (xhr) => {
+        xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
+          // Proxy sub-playlists or TS segments if main stream uses proxy fallback or HTTPS mixed content
+          const isHttpsPage = window.location.protocol === 'https:';
+          if ((useProxyFallback || (isHttpsPage && requestUrl.startsWith('http:'))) && !requestUrl.includes('/api/proxy')) {
+            const proxied = `/api/proxy?url=${encodeURIComponent(requestUrl)}`;
+            xhr.open('GET', proxied, true);
+          }
         },
       });
 
