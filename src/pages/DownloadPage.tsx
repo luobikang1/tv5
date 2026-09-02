@@ -1,11 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { HlsPlayer } from '../components/HlsPlayer';
-import { Download, Play, Copy, Check, Link as LinkIcon, Info } from 'lucide-react';
+import { VideoItem, parsePlayUrls, PlaySource, Episode } from '../services/cmsApi';
+import { Download, Play, Copy, Check, Link as LinkIcon, Info, ArrowLeft, Layers, Film } from 'lucide-react';
 
 export const DownloadPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const passedVideo = (location.state as { video?: VideoItem })?.video || null;
+
   const [downloadUrl, setDownloadUrl] = useState('');
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const [playSources, setPlaySources] = useState<PlaySource[]>([]);
+  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
+  const [activeEpisodeIndex, setActiveEpisodeIndex] = useState(0);
+
+  useEffect(() => {
+    if (passedVideo) {
+      const parsed = parsePlayUrls(passedVideo.vod_play_from, passedVideo.vod_play_url);
+      setPlaySources(parsed);
+      if (parsed.length > 0 && parsed[0].episodes.length > 0) {
+        const firstEp = parsed[0].episodes[0];
+        setDownloadUrl(firstEp.url);
+        setPlayingUrl(firstEp.url);
+      }
+    }
+  }, [passedVideo]);
+
+  const currentSource = playSources[activeSourceIndex];
+
+  const handleSelectEpisode = (epIndex: number) => {
+    setActiveEpisodeIndex(epIndex);
+    const ep = currentSource?.episodes[epIndex];
+    if (ep) {
+      setDownloadUrl(ep.url);
+      setPlayingUrl(ep.url);
+    }
+  };
 
   const handlePlayInline = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +58,31 @@ export const DownloadPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm flex items-center space-x-2 transition-colors shadow-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>返回海报 / 上一页</span>
+        </button>
+
+        {passedVideo && (
+          <button
+            onClick={() => navigate(`/player/${passedVideo.source_id}/${passedVideo.vod_id}`)}
+            className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-sm font-medium flex items-center space-x-2 transition-colors shadow-sm"
+          >
+            <Film className="w-4 h-4" />
+            <span>进入该片播放页</span>
+          </button>
+        )}
+      </div>
+
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-4">
         <div className="flex items-center space-x-3 text-fox-500">
           <Download className="w-8 h-8" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
-            下载中心与在线解析播放
+            {passedVideo ? `下载与解析 - ${passedVideo.vod_name}` : '下载中心与在线解析播放'}
           </h1>
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -66,12 +120,72 @@ export const DownloadPage: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {playSources.length > 0 && (
+          <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            {playSources.length > 1 && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <Layers className="w-4 h-4 text-fox-500" />
+                  <span>下载线路</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {playSources.map((src, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setActiveSourceIndex(index);
+                        setActiveEpisodeIndex(0);
+                        const first = src.episodes[0];
+                        if (first) {
+                          setDownloadUrl(first.url);
+                          setPlayingUrl(first.url);
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        activeSourceIndex === index
+                          ? 'bg-fox-500 text-white shadow'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      }`}
+                    >
+                      {src.sourceName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">选集切换</h3>
+                <span className="text-xs text-slate-400">共 {currentSource?.episodes.length || 0} 集</span>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-48 overflow-y-auto pr-1">
+                {currentSource?.episodes.map((ep, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectEpisode(idx)}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-semibold transition-all truncate ${
+                      activeEpisodeIndex === idx
+                        ? 'bg-fox-500 text-white shadow'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {ep.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {playingUrl && (
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">在线测试/预览播放</h2>
-          <HlsPlayer url={playingUrl} title="自定直链播放" />
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">在线预览播放 (默认 360P)</h2>
+          </div>
+          <HlsPlayer url={playingUrl} title="下载页预览" />
         </div>
       )}
 

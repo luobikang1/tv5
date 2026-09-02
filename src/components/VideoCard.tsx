@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { VideoItem } from '../services/cmsApi';
 import { DEFAULT_POSTER, getProxyPosterUrl } from '../services/posterProxy';
-import { Play } from 'lucide-react';
+import { Play, Download } from 'lucide-react';
 
 interface VideoCardProps {
   video: VideoItem;
 }
 
 export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
+  const navigate = useNavigate();
   const [imgSrc, setImgSrc] = useState<string>(() => getProxyPosterUrl(video.vod_pic));
   const [hasError, setHasError] = useState(false);
 
@@ -35,10 +36,22 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute inset-0 flex items-center justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="w-12 h-12 rounded-full bg-fox-500 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
             <Play className="w-6 h-6 fill-current ml-0.5" />
           </div>
+
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate('/download', { state: { video } });
+            }}
+            title="下载该视频"
+            className="w-11 h-11 rounded-full bg-slate-900/90 text-white hover:bg-emerald-600 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700"
+          >
+            <Download className="w-5 h-5" />
+          </button>
         </div>
 
         {video.vod_remarks && (
