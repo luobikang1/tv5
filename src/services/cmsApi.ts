@@ -142,11 +142,16 @@ export function parsePlayUrls(vodPlayFrom?: string, vodPlayUrl?: string): PlaySo
     const rawEpisodes = playUrlGroups[index] ? playUrlGroups[index].split('#') : [];
     const episodes: Episode[] = rawEpisodes
       .map((item) => {
-        const parts = item.split('$');
+        const trimmed = item.trim();
+        if (!trimmed) return null;
+
+        const parts = trimmed.split('$');
         if (parts.length >= 2) {
-          return { name: parts[0], url: parts[1] };
-        } else if (parts.length === 1 && parts[0].startsWith('http')) {
-          return { name: '播放', url: parts[0] };
+          const epName = parts[0].trim() || '正片';
+          const epUrl = parts[1].trim();
+          return { name: epName, url: epUrl };
+        } else if (parts.length === 1 && parts[0].trim().startsWith('http')) {
+          return { name: '正片', url: parts[0].trim() };
         }
         return null;
       })

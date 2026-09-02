@@ -23,10 +23,13 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [useProxyFallback, setUseProxyFallback] = useState(false);
 
   const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
-    if (useProxy && !rawUrl.includes('/api/proxy')) {
-      return `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+    let cleanUrl = rawUrl.trim();
+    // Auto-detect mixed content (HTTP url on HTTPS page)
+    const isHttpsPage = window.location.protocol === 'https:';
+    if ((useProxy || (isHttpsPage && cleanUrl.startsWith('http:'))) && !cleanUrl.includes('/api/proxy')) {
+      return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
     }
-    return rawUrl;
+    return cleanUrl;
   };
 
   const loadStream = () => {
@@ -36,7 +39,18 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     setErrorText(null);
     video.preload = 'metadata';
 
-    const playableUrl = getPlayableUrl(url, useProxyFallback);
+    const cleanUrl = url.trim();
+    const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
+
+    // If stream URL is an HTML page / iframe player rather than direct video/hls media
+    const isDirectMedia = cleanUrl.includes('.m3u8') || cleanUrl.includes('.mp4') || cleanUrl.includes('.webm') || cleanUrl.includes('.flv');
+
+    if (!isDirectMedia && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) && !useProxyFallback) {
+      // Direct html/iframe embed URL
+      if (cleanUrl.includes('share') || cleanUrl.includes('embed') || cleanUrl.includes('parse') || cleanUrl.includes('html')) {
+        // Will render in iframe fallback mode if user or system requests
+      }
+    }
 
     if (playableUrl.includes('.mp4') || playableUrl.includes('.webm')) {
       video.src = playableUrl;
@@ -93,6 +107,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               if (!useProxyFallback) {
+                console.log('Network error detected, enabling proxy fallback...');
                 setUseProxyFallback(true);
               } else {
                 hls.startLoad();
@@ -106,7 +121,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               if (!useProxyFallback) {
                 setUseProxyFallback(true);
               } else {
-                setErrorText('视频源未响应或遭受跨域阻断，请尝试更换播放线路');
+                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试点击下方“开启代理/重试”');
               }
               break;
           }
