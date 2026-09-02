@@ -112,7 +112,6 @@ export const PlayerPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
-      {/* Top Action Controls */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
@@ -133,7 +132,6 @@ export const PlayerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Video HLS Player */}
       {currentEpisode ? (
         <HlsPlayer
           url={currentEpisode.url}
@@ -142,7 +140,6 @@ export const PlayerPage: React.FC = () => {
         />
       ) : null}
 
-      {/* Control Buttons (Next/Prev Episode & Download Link) */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
         <div className="flex items-center space-x-3">
           <button
@@ -174,9 +171,7 @@ export const PlayerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Source Selector & Episode Grid */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-md">
-        {/* Source Tabs */}
         {playSources.length > 1 && (
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -204,7 +199,6 @@ export const PlayerPage: React.FC = () => {
           </div>
         )}
 
-        {/* Episode Grid */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">选集列表</h3>
@@ -229,7 +223,6 @@ export const PlayerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Video Detail Info */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 shadow-md">
         <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{video.vod_name}</h2>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">

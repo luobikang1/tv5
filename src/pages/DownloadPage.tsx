@@ -24,7 +24,6 @@ export const DownloadPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-4">
         <div className="flex items-center space-x-3 text-fox-500">
           <Download className="w-8 h-8" />
@@ -69,7 +68,6 @@ export const DownloadPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Inline Player */}
       {playingUrl && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">在线测试/预览播放</h2>
@@ -77,7 +75,6 @@ export const DownloadPage: React.FC = () => {
         </div>
       )}
 
-      {/* Download Tool Recommendation */}
       <div className="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 text-xs text-slate-600 dark:text-slate-400">
         <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200 text-sm">
           <Info className="w-4 h-4 text-fox-500" />

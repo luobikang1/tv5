@@ -9,7 +9,6 @@ export const HistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
         <div className="flex items-center space-x-3">
           <div className="p-3 bg-fox-100 dark:bg-fox-900/40 text-fox-500 rounded-2xl">
@@ -32,7 +31,6 @@ export const HistoryPage: React.FC = () => {
         )}
       </div>
 
-      {/* History Items List */}
       {historyList.length > 0 ? (
         <div className="space-y-4">
           {historyList.map((item) => (

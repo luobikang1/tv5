@@ -24,7 +24,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
       to={`/player/${video.source_id}/${video.vod_id}`}
       className="group relative flex flex-col bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
     >
-      {/* Poster Image Container */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
         <img
           src={imgSrc}
@@ -34,7 +33,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 
-        {/* Gradient Overlay & Play Button */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -43,14 +41,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
           </div>
         </div>
 
-        {/* Remarks / Episode Badge */}
         {video.vod_remarks && (
           <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-white text-[11px] font-medium">
             {video.vod_remarks}
           </span>
         )}
 
-        {/* Source Badge */}
         {video.source_name && (
           <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-fox-500/90 text-white text-[10px] font-bold tracking-wide uppercase shadow">
             {video.source_name}
@@ -58,7 +54,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         )}
       </div>
 
-      {/* Title & Info */}
       <div className="p-3 flex flex-col flex-1">
         <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1 group-hover:text-fox-500 transition-colors">
           {video.vod_name}

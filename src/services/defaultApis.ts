@@ -6,7 +6,6 @@ export interface CmsApiSource {
   isDefault?: boolean;
 }
 
-// 20 internet CMS video APIs + dedicated adult APIs
 export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
   { id: 'bfzy', name: '暴风资源', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'ikun', name: 'iKun资源', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
@@ -30,7 +29,6 @@ export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
   { id: 'mozu', name: '魔都资源', url: 'https://m3u8.maccms.site/api.php/provide/vod', type: 'video', isDefault: true },
 ];
 
-// Adult Video CMS APIs
 export const DEFAULT_ADULT_APIS: CmsApiSource[] = [
   { id: 'ad_sex8', name: '色88资源', url: 'https://cj.c26123.com/api.php/provide/vod', type: 'adult' },
   { id: 'ad_91zy', name: '91资源', url: 'https://91zy.com/api.php/provide/vod', type: 'adult' },

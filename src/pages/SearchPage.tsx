@@ -26,7 +26,6 @@ export const SearchPage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
-      {/* Search Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl text-center space-y-4">
         <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
           全站集合搜索
@@ -58,7 +57,6 @@ export const SearchPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Search Results */}
       {isSearching ? (
         <div className="text-center py-16 space-y-3">
           <Loader2 className="w-10 h-10 animate-spin text-fox-500 mx-auto" />

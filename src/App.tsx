@@ -30,7 +30,7 @@ const ProtectedLayout: React.FC = () => {
         ) : (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
             <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-300">白狐5 已锁定</h2>
-            <p className="text-slate-500 text-sm mt-2">请在下方弹窗中输入访问密码以进行解锁</p>
+            <p className="text-slate-500 text-sm mt-2">请在下方弹窗中输入访问密码或登入账号解锁</p>
           </div>
         )}
       </main>

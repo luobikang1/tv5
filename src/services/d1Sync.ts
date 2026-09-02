@@ -2,9 +2,6 @@ export interface D1Config {
   endpoint: string;
 }
 
-/**
- * Save user state/history to Cloudflare D1 via the functions/api/d1/sync endpoint
- */
 export async function syncToD1(key: string, value: any, d1Endpoint: string = '/api/d1/sync'): Promise<boolean> {
   try {
     const res = await fetch(d1Endpoint, {
@@ -20,9 +17,6 @@ export async function syncToD1(key: string, value: any, d1Endpoint: string = '/a
   }
 }
 
-/**
- * Fetch user state/history from Cloudflare D1
- */
 export async function fetchFromD1(key: string, d1Endpoint: string = '/api/d1/sync'): Promise<any | null> {
   try {
     const res = await fetch(`${d1Endpoint}?key=${encodeURIComponent(key)}`);

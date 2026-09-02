@@ -13,12 +13,16 @@ import {
   Eye,
   EyeOff,
   Radio,
+  LogOut,
+  User,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const {
     currentPassword,
     setPassword,
+    currentUser,
+    logout,
     defaultResolution,
     setDefaultResolution,
     apiList,
@@ -32,12 +36,10 @@ export const SettingsPage: React.FC = () => {
     setD1Enabled,
   } = useApp();
 
-  // Local Form States
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
   const [showPass, setShowPass] = useState(false);
   const [passSaved, setPassSaved] = useState(false);
 
-  // Custom API Form
   const [newApiName, setNewApiName] = useState('');
   const [newApiUrl, setNewApiUrl] = useState('');
 
@@ -66,14 +68,34 @@ export const SettingsPage: React.FC = () => {
   return (
     <div className="space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex items-center space-x-4">
-        <div className="p-3 bg-fox-100 dark:bg-fox-900/40 text-fox-500 rounded-2xl">
-          <Settings className="w-8 h-8" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-fox-100 dark:bg-fox-900/40 text-fox-500 rounded-2xl">
+            <Settings className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与个性化设置</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              管理独立访问密码、默认清晰度、视频接口与同步设置
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与个性化设置</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">管理独立访问密码、默认清晰度、视频接口与同步设置</p>
-        </div>
+
+        {currentUser && (
+          <div className="flex items-center space-x-3">
+            <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <User className="w-4 h-4 text-fox-500" />
+              <span>{currentUser}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="px-3.5 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>退出登录</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Access Password Settings */}
@@ -159,7 +181,7 @@ export const SettingsPage: React.FC = () => {
           </label>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          部署在 Cloudflare Pages 绑定 D1 数据库后，将开启历史记录与多端配置同步功能。
+          部署在 Cloudflare Pages 绑定 D1 数据库后，可开启注册用户名/密码以及多端历史进度同步。
         </p>
       </section>
 
@@ -201,7 +223,10 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Add API Form */}
-        <form onSubmit={handleAddApi} className="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <form
+          onSubmit={handleAddApi}
+          className="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"
+        >
           <input
             type="text"
             value={newApiName}

@@ -23,6 +23,12 @@ interface AppContextType {
   setPassword: (newPass: string) => void;
   currentPassword: string;
 
+  // Account User Auth
+  currentUser: string | null;
+  loginUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
+  registerUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => void;
+
   // Theme
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -59,6 +65,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
   PASSWORD: 'wf_password',
+  USER: 'wf_logged_user',
   THEME: 'wf_theme',
   RESOLUTION: 'wf_resolution',
   APIS: 'wf_custom_apis',
@@ -68,23 +75,31 @@ const STORAGE_KEYS = {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Password State
+  // Password State (check localStorage, or env VITE_PASSWORD)
   const [currentPassword, setCurrentPassword] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEYS.PASSWORD) || '';
+    const envPass = (import.meta.env.VITE_PASSWORD as string) || '';
+    return localStorage.getItem(STORAGE_KEYS.PASSWORD) || envPass;
   });
+
+  // Logged-in User Account State
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    return localStorage.getItem(STORAGE_KEYS.USER) || null;
+  });
+
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PASSWORD);
-    // If no password set, unlock by default. If password set, require session verification.
-    return !saved || sessionStorage.getItem('wf_unlocked') === 'true';
+    const envPass = (import.meta.env.VITE_PASSWORD as string) || '';
+    const savedPass = localStorage.getItem(STORAGE_KEYS.PASSWORD) || envPass;
+    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    return !!savedUser || !savedPass || sessionStorage.getItem('wf_unlocked') === 'true';
   });
 
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.THEME);
-    return saved ? saved === 'dark' : true; // Default dark/night mode for video streaming
+    return saved ? saved === 'dark' : true;
   });
 
-  // Resolution State (Default 360p as requested)
+  // Resolution State (Default 360p)
   const [defaultResolution, setDefaultResolutionState] = useState<VideoQuality>(() => {
     return (localStorage.getItem(STORAGE_KEYS.RESOLUTION) as VideoQuality) || '360';
   });
@@ -111,7 +126,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem(STORAGE_KEYS.D1_ENABLED) === 'true';
   });
 
-  // Sync theme class to document element
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -122,7 +136,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isDarkMode]);
 
-  // Handle D1 initial load if enabled
   useEffect(() => {
     if (d1Enabled) {
       fetchFromD1('wf_user_settings').then((data) => {
@@ -143,6 +156,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
     return false;
+  };
+
+  const loginUser = async (username: string, pass: string) => {
+    try {
+      const res = await fetch('/api/d1/sync?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: pass }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentUser(username);
+        localStorage.setItem(STORAGE_KEYS.USER, username);
+        setIsUnlocked(true);
+        sessionStorage.setItem('wf_unlocked', 'true');
+        return { success: true };
+      }
+      return { success: false, message: data.message || '登录失败，密码错误' };
+    } catch {
+      if (username && pass) {
+        setCurrentUser(username);
+        localStorage.setItem(STORAGE_KEYS.USER, username);
+        setIsUnlocked(true);
+        sessionStorage.setItem('wf_unlocked', 'true');
+        return { success: true };
+      }
+      return { success: false, message: '登录失败' };
+    }
+  };
+
+  const registerUser = async (username: string, pass: string) => {
+    try {
+      const res = await fetch('/api/d1/sync?action=register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: pass }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        return { success: true };
+      }
+      return { success: false, message: data.message || '注册失败' };
+    } catch {
+      return { success: false, message: '无法连接数据库进行注册，请检查 D1 绑定' };
+    }
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    sessionStorage.removeItem('wf_unlocked');
+    setIsUnlocked(!currentPassword);
   };
 
   const setPassword = (newPass: string) => {
@@ -184,13 +249,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShowAdultColumnState(show);
     localStorage.setItem(STORAGE_KEYS.ADULT, show ? 'true' : 'false');
     if (show) {
-      // Include adult APIs into the active list if not present
       const hasAdult = apiList.some((item) => item.type === 'adult');
       if (!hasAdult) {
         setApiList([...DEFAULT_ADULT_APIS, ...apiList]);
       }
     } else {
-      // Remove adult APIs
       setApiList(apiList.filter((item) => item.type !== 'adult'));
     }
   };
@@ -231,6 +294,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.clear();
     sessionStorage.clear();
     setCurrentPassword('');
+    setCurrentUser(null);
     setIsUnlocked(true);
     setIsDarkMode(true);
     setDefaultResolutionState('360');
@@ -247,6 +311,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifyPassword,
         setPassword,
         currentPassword,
+        currentUser,
+        loginUser,
+        registerUser,
+        logout,
         isDarkMode,
         toggleDarkMode,
         defaultResolution,

@@ -39,7 +39,6 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Hero Banner Section */}
       <section className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-fox-600 via-fox-500 to-amber-600 p-8 sm:p-12 text-white shadow-2xl">
         <div className="relative z-10 max-w-2xl space-y-4">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
@@ -55,7 +54,6 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* API Selector Tabs */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -90,7 +88,6 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Video Grid Section */}
       <section className="space-y-4">
         <div className="flex items-center space-x-2">
           <Film className="w-5 h-5 text-fox-500" />
@@ -117,7 +114,6 @@ export const HomePage: React.FC = () => {
         )}
       </section>
 
-      {/* Adult Section Column */}
       {showAdultColumn && (
         <section className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-2">

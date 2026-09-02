@@ -38,9 +38,6 @@ export interface CmsResponse {
   list: VideoItem[];
 }
 
-/**
- * Fetch data with timeout and proxy support
- */
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -54,15 +51,11 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     return response;
   } catch (err) {
     clearTimeout(id);
-    // If direct fetch fails, try Cloudflare Pages API proxy if on web
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
     return fetch(proxyUrl, options);
   }
 }
 
-/**
- * Fetch video list from a CMS API
- */
 export async function fetchVodList(
   api: CmsApiSource,
   params: { page?: number; cid?: number; keyword?: string } = {}
@@ -95,9 +88,6 @@ export async function fetchVodList(
   }
 }
 
-/**
- * Perform aggregated search across all active APIs
- */
 export async function searchAggregated(
   apis: CmsApiSource[],
   keyword: string
@@ -117,9 +107,6 @@ export async function searchAggregated(
   return combined;
 }
 
-/**
- * Fetch video details by ID from a specific CMS source
- */
 export async function fetchVodDetail(api: CmsApiSource, vodId: string | number): Promise<VideoItem | null> {
   try {
     const searchParams = new URLSearchParams({
@@ -145,9 +132,6 @@ export async function fetchVodDetail(api: CmsApiSource, vodId: string | number):
   }
 }
 
-/**
- * Parse standard MacCMS play url format: "Episode 1$http://...m3u8#Episode 2$http://...m3u8"
- */
 export function parsePlayUrls(vodPlayFrom?: string, vodPlayUrl?: string): PlaySource[] {
   if (!vodPlayUrl) return [];
 

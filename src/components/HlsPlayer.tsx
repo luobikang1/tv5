@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HlsPlayerProps {
@@ -17,39 +17,55 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [levels, setLevels] = useState<{ id: number; name: string; height: number }[]>([]);
-  const [currentLevel, setCurrentLevel] = useState<number>(-1); // -1 = auto
+  const [currentLevel, setCurrentLevel] = useState<number>(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [useProxyFallback, setUseProxyFallback] = useState(false);
 
-  useEffect(() => {
+  const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
+    if (useProxy && !rawUrl.includes('/api/proxy')) {
+      return `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+    }
+    return rawUrl;
+  };
+
+  const loadStream = () => {
     const video = videoRef.current;
     if (!video || !url) return;
 
     setErrorText(null);
-
-    // Apply preloading optimizations
     video.preload = 'metadata';
+
+    const playableUrl = getPlayableUrl(url, useProxyFallback);
+
+    if (playableUrl.includes('.mp4') || playableUrl.includes('.webm')) {
+      video.src = playableUrl;
+      video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      return;
+    }
 
     if (Hls.isSupported()) {
       if (hlsRef.current) {
         hlsRef.current.destroy();
       }
 
-      // HLS anti-lag configuration tuning
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
         backBufferLength: 90,
         maxBufferLength: 30,
         maxMaxBufferLength: 600,
-        maxBufferSize: 60 * 1000 * 1000, // 60MB
+        maxBufferSize: 60 * 1000 * 1000,
         maxBufferHole: 0.5,
         highBufferWatchdogPeriod: 2,
-        startLevel: -1, // Auto start
+        startLevel: -1,
+        xhrSetup: (xhr) => {
+          xhr.withCredentials = false;
+        },
       });
 
       hlsRef.current = hls;
-      hls.loadSource(url);
+      hls.loadSource(playableUrl);
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -60,7 +76,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         }));
         setLevels(availableLevels);
 
-        // Map preferred default resolution (e.g., 360p)
         if (defaultResolution !== 'auto' && availableLevels.length > 0) {
           const targetHeight = parseInt(defaultResolution, 10);
           const foundIndex = availableLevels.findIndex((l) => Math.abs(l.height - targetHeight) < 100);
@@ -77,34 +92,45 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
+              if (!useProxyFallback) {
+                setUseProxyFallback(true);
+              } else {
+                hls.startLoad();
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError();
               break;
             default:
               hls.destroy();
-              setErrorText('视频加载失败，请尝试更换播放源或网络环境');
+              if (!useProxyFallback) {
+                setUseProxyFallback(true);
+              } else {
+                setErrorText('视频源未响应或遭受跨域阻断，请尝试更换播放线路');
+              }
               break;
           }
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS support for Safari / iOS
-      video.src = url;
+      video.src = playableUrl;
       video.addEventListener('loadedmetadata', () => {
         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       });
     } else {
-      setErrorText('您的浏览器不支持 HLS 视频播放');
+      setErrorText('您的浏览器不支持 HLS 视频流播放');
     }
+  };
+
+  useEffect(() => {
+    loadStream();
 
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
       }
     };
-  }, [url, defaultResolution]);
+  }, [url, useProxyFallback, defaultResolution]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -146,10 +172,19 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   return (
     <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800">
       {errorText ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 text-red-400 p-6 text-center">
-          <AlertCircle className="w-12 h-12 mb-3" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
+          <AlertCircle className="w-12 h-12" />
           <p className="font-semibold text-lg">{errorText}</p>
-          <p className="text-slate-400 text-sm mt-2">提示：源站可能已失效，点击上方切换其他播放源</p>
+          <button
+            onClick={() => {
+              setUseProxyFallback(true);
+              loadStream();
+            }}
+            className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>开启代理防跨域极速重试</span>
+          </button>
         </div>
       ) : null}
 
@@ -160,8 +195,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         playsInline
       />
 
-      {/* Floating Player Bar */}
-      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white">
+      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white z-10">
         <div className="flex items-center space-x-4">
           <button onClick={togglePlay} className="hover:text-fox-400 transition-colors">
             {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
@@ -172,7 +206,19 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         </div>
 
         <div className="flex items-center space-x-4 relative">
-          {/* Quality Selector */}
+          <button
+            onClick={() => {
+              setUseProxyFallback(!useProxyFallback);
+            }}
+            className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors ${
+              useProxyFallback
+                ? 'bg-emerald-600 border-emerald-500 text-white'
+                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            {useProxyFallback ? '代理反查已开启' : '启用极速代理'}
+          </button>
+
           <div className="relative">
             <button
               onClick={() => setShowQualityMenu(!showQualityMenu)}
