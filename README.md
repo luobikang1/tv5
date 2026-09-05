@@ -45,7 +45,7 @@
 
 ### 1. Cloudflare Pages 部署 (推荐，零成本)
 
-#### 方案 A：GitHub 自动关联部署（最简便）
+#### 方案 A：拉取源码 / GitHub 自动关联部署（最简便）
 1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
 3. 选择 `whitefox5` 仓库，配置构建参数：
@@ -53,19 +53,26 @@
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
 4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与注册**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
+
+#### 方案 B：上传部署 (Direct Upload 部署)
+1. 本地运行 `npm run build` 生成生产部署文件目录 `dist`。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Upload assets**。
+3. 输入项目名称（例如 `whitefox5`），将编译好的 `dist` 文件夹直接拖拽上传即可完成部署。
+
+> **设置 API / D1 同步与注册**：
+> 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
 
 ---
 
 ### 2. Vercel 一键部署
 
-1. 在 Vercel 导入 GitHub 仓库：
-2. **Build Command**: `npm run build`
-3. **Output Directory**: `dist`
-4. 环境变量中添加 `PASSWORD`（可选）。
-5. 本项目已内置 `vercel.json` 规则，部署完成后系统路由与 `/api/proxy` 函数将自动生效。
+1. 在 Vercel 导入 GitHub 仓库。
+2. 配置参数：
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+3. 环境变量中添加 `PASSWORD`（可选）。
+4. 本项目已内置 `vercel.json` 规则，点击 Deploy 即可一键部署成功，路由与 `/api/proxy` 函数将自动生效。
 
 ---
 
