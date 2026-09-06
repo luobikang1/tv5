@@ -33,6 +33,7 @@ export const PlayerPage: React.FC = () => {
         if (parsedSources.length > 0 && parsedSources[0].episodes.length > 0) {
           addHistory({
             id: `${sourceId}-${vodId}`,
+            vod_id: vodId,
             vod_name: data.vod_name,
             vod_pic: data.vod_pic,
             source_id: sourceId,
@@ -54,12 +55,13 @@ export const PlayerPage: React.FC = () => {
   const handleSelectEpisode = (epIndex: number) => {
     setActiveEpisodeIndex(epIndex);
     const ep = currentSource?.episodes[epIndex];
-    if (video && ep) {
+    if (video && ep && sourceId && vodId) {
       addHistory({
         id: `${sourceId}-${vodId}`,
+        vod_id: vodId,
         vod_name: video.vod_name,
         vod_pic: video.vod_pic,
-        source_id: sourceId || '',
+        source_id: sourceId,
         source_name: video.source_name || '',
         episode_name: ep.name,
         episode_url: ep.url,

@@ -4,6 +4,7 @@ import { syncToD1, fetchFromD1 } from '../services/d1Sync';
 
 export interface WatchHistoryItem {
   id: string | number;
+  vod_id: string | number;
   vod_name: string;
   vod_pic?: string;
   source_id: string;

@@ -66,7 +66,7 @@ export const HistoryPage: React.FC = () => {
 
               <div className="flex items-center space-x-2 flex-shrink-0">
                 <Link
-                  to={`/player/${item.source_id}/${item.id.toString().replace(`${item.source_id}-`, '')}`}
+                  to={`/player/${item.source_id}/${item.vod_id || item.id.toString().replace(`${item.source_id}-`, '')}`}
                   className="p-2.5 bg-fox-500 hover:bg-fox-600 text-white rounded-xl shadow-md shadow-fox-500/20 flex items-center space-x-1 text-xs font-semibold"
                 >
                   <Play className="w-4 h-4 fill-current" />
