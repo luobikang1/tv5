@@ -2,18 +2,39 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { searchAggregated, VideoItem } from '../services/cmsApi';
 import { VideoCard } from '../components/VideoCard';
-import { Search, Loader2, Film } from 'lucide-react';
+import { Search, Loader2, Film, Heart, Globe, Youtube, Play, Trash2 } from 'lucide-react';
 
 export const SearchPage: React.FC = () => {
-  const { apiList } = useApp();
+  const { apiList, favoritesList, toggleFavorite } = useApp();
+  const [searchMode, setSearchMode] = useState<'cms' | 'web'>('cms');
   const [keyword, setKeyword] = useState('');
   const [results, setResults] = useState<VideoItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Universal Web & YouTube embedded video URL player
+  const [webVideoUrl, setWebVideoUrl] = useState('');
+  const [activeWebEmbedUrl, setActiveWebEmbedUrl] = useState('');
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!keyword.trim()) return;
+
+    if (searchMode === 'web') {
+      // If keyword looks like a URL or Youtube query, set embed
+      let targetUrl = keyword.trim();
+      if (targetUrl.includes('youtube.com/watch?v=') || targetUrl.includes('youtu.be/')) {
+        const videoId = targetUrl.split('v=')[1]?.split('&')[0] || targetUrl.split('youtu.be/')[1]?.split('?')[0];
+        if (videoId) {
+          targetUrl = `https://www.youtube.com/embed/${videoId}`;
+        }
+      } else if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(targetUrl)}`;
+      }
+      setActiveWebEmbedUrl(targetUrl);
+      setHasSearched(true);
+      return;
+    }
 
     setIsSearching(true);
     setHasSearched(true);
@@ -24,24 +45,66 @@ export const SearchPage: React.FC = () => {
     setIsSearching(false);
   };
 
-  return (
-    <div className="space-y-8 pb-16 max-w-7xl mx-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl text-center space-y-4">
-        <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
-          全站集合搜索
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-          同时并发请求 20+ 内置视频 API 接口，一键全网搜索热门影片、电视剧、动漫与综艺
-        </p>
+  const playYoutubeQuery = (query: string) => {
+    setSearchMode('web');
+    setKeyword(query);
+    const targetUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}`;
+    setActiveWebEmbedUrl(targetUrl);
+    setHasSearched(true);
+  };
 
-        <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex items-center gap-3 pt-2">
+  return (
+    <div className="space-y-10 pb-16 max-w-7xl mx-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl text-center space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
+            全站集合搜索 & 互联网全网视频
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto mt-2">
+            并发请求 20+ 内置影视源站，并支持一键搜索全网互联网及 YouTube 主流视频与在线播放
+          </p>
+        </div>
+
+        {/* Mode Switcher */}
+        <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setSearchMode('cms')}
+            className={`px-5 py-2.5 rounded-xl transition-all flex items-center space-x-2 ${
+              searchMode === 'cms'
+                ? 'bg-fox-500 text-white shadow'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Film className="w-4 h-4" />
+            <span>20+ 影视源站聚合搜索</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSearchMode('web')}
+            className={`px-5 py-2.5 rounded-xl transition-all flex items-center space-x-2 ${
+              searchMode === 'web'
+                ? 'bg-fox-500 text-white shadow'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Youtube className="w-4 h-4 text-red-500" />
+            <span>全网互联网 / YouTube 视频</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="输入影片名称、演员或导演关键词..."
+              placeholder={
+                searchMode === 'cms'
+                  ? '输入影片名称、演员或导演关键词...'
+                  : '输入 YouTube 关键字或全网视频 URL 链接...'
+              }
               className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 transition-all text-sm sm:text-base"
               autoFocus
             />
@@ -51,39 +114,119 @@ export const SearchPage: React.FC = () => {
             disabled={isSearching}
             className="px-6 py-3.5 bg-fox-500 hover:bg-fox-600 active:bg-fox-700 text-white font-medium rounded-2xl shadow-lg shadow-fox-500/30 flex items-center space-x-2 transition-all disabled:opacity-50"
           >
-            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-            <span className="hidden sm:inline">聚合搜索</span>
+            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe className="w-5 h-5" />}
+            <span className="hidden sm:inline">全网搜索</span>
           </button>
         </form>
+
+        {searchMode === 'web' && (
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+            <span>热门全网视频搜索:</span>
+            {['4K 演示风光', '电影预告片', '周杰伦 Live', 'TED 演讲'].map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => playYoutubeQuery(tag)}
+                className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-fox-500 hover:text-white rounded-lg transition-colors"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {isSearching ? (
-        <div className="text-center py-16 space-y-3">
-          <Loader2 className="w-10 h-10 animate-spin text-fox-500 mx-auto" />
-          <p className="text-slate-500 dark:text-slate-400 font-medium">正在并发抓取全网源站接口中...</p>
-        </div>
-      ) : hasSearched ? (
-        <div className="space-y-4">
+      {/* Embedded Web Video Player */}
+      {searchMode === 'web' && activeWebEmbedUrl && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-              <Film className="w-5 h-5 text-fox-500" />
-              <span>搜索结果 ({results.length} 项)</span>
-            </h2>
+            <div className="flex items-center space-x-2 font-bold text-slate-900 dark:text-slate-100">
+              <Youtube className="w-5 h-5 text-red-500" />
+              <span>全网在线视频播放窗口</span>
+            </div>
+            <span className="text-xs text-slate-400 truncate max-w-xs">{activeWebEmbedUrl}</span>
           </div>
-
-          {results.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
-              {results.map((vid, i) => (
-                <VideoCard key={`${vid.source_id}-${vid.vod_id}-${i}`} video={vid} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <p className="text-slate-500 dark:text-slate-400 font-medium">未搜到相关影片，请更换关键字重试</p>
-            </div>
-          )}
+          <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-inner">
+            <iframe
+              src={activeWebEmbedUrl}
+              title="Universal Web Video"
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
         </div>
-      ) : null}
+      )}
+
+      {/* CMS Search Results */}
+      {searchMode === 'cms' && (
+        <>
+          {isSearching ? (
+            <div className="text-center py-16 space-y-3">
+              <Loader2 className="w-10 h-10 animate-spin text-fox-500 mx-auto" />
+              <p className="text-slate-500 dark:text-slate-400 font-medium">正在并发抓取全网源站接口中...</p>
+            </div>
+          ) : hasSearched ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+                  <Film className="w-5 h-5 text-fox-500" />
+                  <span>搜索结果 ({results.length} 项)</span>
+                </h2>
+              </div>
+
+              {results.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+                  {results.map((vid, i) => (
+                    <VideoCard key={`${vid.source_id}-${vid.vod_id}-${i}`} video={vid} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">未搜到相关影片，请更换关键字重试</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {/* Video Favorites Section Below Search */}
+      <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-xl font-extrabold text-slate-900 dark:text-slate-100">
+            <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
+              <Heart className="w-5 h-5 fill-current" />
+            </div>
+            <h2>我的影视收藏</h2>
+          </div>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            共 {favoritesList.length} 部收藏影片
+          </span>
+        </div>
+
+        {favoritesList.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+            {favoritesList.map((fav) => (
+              <VideoCard
+                key={fav.id}
+                video={{
+                  vod_id: fav.vod_id,
+                  vod_name: fav.vod_name,
+                  vod_pic: fav.vod_pic,
+                  source_id: fav.source_id,
+                  source_name: fav.source_name,
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <Heart className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">暂无收藏影片，点击海报右上角红心可一键收藏</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

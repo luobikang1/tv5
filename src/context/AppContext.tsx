@@ -51,6 +51,18 @@ interface AppContextType {
   showAdultColumn: boolean;
   setShowAdultColumn: (show: boolean) => void;
 
+  // Favorites Management
+  favoritesList: WatchHistoryItem[];
+  toggleFavorite: (item: Omit<WatchHistoryItem, 'updated_at'>) => void;
+  isFavorite: (id: string | number) => boolean;
+
+  // Login Background Customization
+  loginBgImage: string;
+  setLoginBgImage: (bg: string) => void;
+
+  // Update Credentials
+  updateUserCredentials: (newUsername: string, newPass: string) => void;
+
   // History Management
   historyList: WatchHistoryItem[];
   addHistory: (item: Omit<WatchHistoryItem, 'updated_at'>) => void;
@@ -76,6 +88,8 @@ const STORAGE_KEYS = {
   APIS: 'wf_custom_apis',
   ADULT: 'wf_show_adult',
   HISTORY: 'wf_watch_history',
+  FAVORITES: 'wf_favorites',
+  LOGIN_BG: 'wf_login_bg',
   D1_ENABLED: 'wf_d1_enabled',
 };
 
@@ -123,6 +137,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Adult Section State
   const [showAdultColumn, setShowAdultColumnState] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.ADULT) === 'true';
+  });
+
+  // Favorites State
+  const [favoritesList, setFavoritesList] = useState<WatchHistoryItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Login Background Image State
+  const [loginBgImage, setLoginBgImageState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.LOGIN_BG) || '/hero-bg.webp';
   });
 
   // Watch History State
@@ -309,6 +334,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
   };
 
+  const toggleFavorite = (item: Omit<WatchHistoryItem, 'updated_at'>) => {
+    setFavoritesList((prev) => {
+      const exists = prev.some((f) => String(f.id) === String(item.id));
+      let updated: WatchHistoryItem[];
+      if (exists) {
+        updated = prev.filter((f) => String(f.id) !== String(item.id));
+      } else {
+        updated = [{ ...item, updated_at: Date.now() }, ...prev];
+      }
+      localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const isFavorite = (id: string | number) => {
+    return favoritesList.some((f) => String(f.id) === String(id));
+  };
+
+  const setLoginBgImage = (bg: string) => {
+    setLoginBgImageState(bg);
+    localStorage.setItem(STORAGE_KEYS.LOGIN_BG, bg);
+  };
+
+  const updateUserCredentials = (newUsername: string, newPass: string) => {
+    if (newUsername) {
+      setCurrentUser(newUsername);
+      localStorage.setItem(STORAGE_KEYS.USER, newUsername);
+    }
+    setPassword(newPass);
+  };
+
   const setD1Enabled = (enabled: boolean) => {
     setD1EnabledState(enabled);
     localStorage.setItem(STORAGE_KEYS.D1_ENABLED, enabled ? 'true' : 'false');
@@ -351,6 +407,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetDefaultApis,
         showAdultColumn,
         setShowAdultColumn,
+        favoritesList,
+        toggleFavorite,
+        isFavorite,
+        loginBgImage,
+        setLoginBgImage,
+        updateUserCredentials,
         historyList,
         addHistory,
         removeHistoryItem,
