@@ -138,7 +138,7 @@ export function parsePlayUrls(vodPlayFrom?: string, vodPlayUrl?: string): PlaySo
   const sources = (vodPlayFrom || '默认源').split('$$$');
   const playUrlGroups = vodPlayUrl.split('$$$');
 
-  return sources.map((sourceName, index) => {
+  const parsedSources: PlaySource[] = sources.map((sourceName, index) => {
     const rawEpisodes = playUrlGroups[index] ? playUrlGroups[index].split('#') : [];
     const episodes: Episode[] = rawEpisodes
       .map((item) => {
@@ -161,5 +161,16 @@ export function parsePlayUrls(vodPlayFrom?: string, vodPlayUrl?: string): PlaySo
       sourceName: sourceName.toUpperCase(),
       episodes,
     };
+  });
+
+  // Prioritize FFM3U8 / 非凡线路 to the front of the array
+  return parsedSources.sort((a, b) => {
+    const nameA = a.sourceName.toLowerCase();
+    const nameB = b.sourceName.toLowerCase();
+    const isA_FF = nameA.includes('ffm3u8') || nameA.includes('ff') || nameA.includes('非凡');
+    const isB_FF = nameB.includes('ffm3u8') || nameB.includes('ff') || nameB.includes('非凡');
+    if (isA_FF && !isB_FF) return -1;
+    if (!isA_FF && isB_FF) return 1;
+    return 0;
   });
 }

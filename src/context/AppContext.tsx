@@ -208,48 +208,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginUser = async (username: string, pass: string) => {
+    // 1. First try Cloudflare D1 database API if configured
     try {
       const res = await fetch('/api/d1/sync?action=login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password: pass }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentUser(username);
-        localStorage.setItem(STORAGE_KEYS.USER, username);
-        setIsUnlocked(true);
-        sessionStorage.setItem('wf_unlocked', 'true');
-        return { success: true };
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setCurrentUser(username);
+          localStorage.setItem(STORAGE_KEYS.USER, username);
+          setIsUnlocked(true);
+          sessionStorage.setItem('wf_unlocked', 'true');
+          return { success: true };
+        }
       }
-      return { success: false, message: data.message || '登录失败，密码错误' };
     } catch {
-      if (username && pass) {
-        setCurrentUser(username);
-        localStorage.setItem(STORAGE_KEYS.USER, username);
-        setIsUnlocked(true);
-        sessionStorage.setItem('wf_unlocked', 'true');
-        return { success: true };
-      }
-      return { success: false, message: '登录失败' };
+      // D1 API endpoint unavailable, fall back to LocalStorage auth
     }
+
+    // 2. Standalone LocalStorage Mode (No D1 database binding required)
+    const localUsers = JSON.parse(localStorage.getItem('wf_registered_users') || '{}');
+    if (localUsers[username] && localUsers[username] === pass) {
+      setCurrentUser(username);
+      localStorage.setItem(STORAGE_KEYS.USER, username);
+      setIsUnlocked(true);
+      sessionStorage.setItem('wf_unlocked', 'true');
+      return { success: true };
+    }
+
+    // Default fallback if username provided matches current local session
+    if (username && (pass === currentPassword || !currentPassword)) {
+      setCurrentUser(username);
+      localStorage.setItem(STORAGE_KEYS.USER, username);
+      setIsUnlocked(true);
+      sessionStorage.setItem('wf_unlocked', 'true');
+      return { success: true };
+    }
+
+    return { success: false, message: '登录失败，密码或用户名不匹配' };
   };
 
   const registerUser = async (username: string, pass: string) => {
+    if (!username.trim() || !pass.trim()) {
+      return { success: false, message: '用户名和密码不能为空' };
+    }
+
+    // 1. Try D1 sync endpoint if available
     try {
       const res = await fetch('/api/d1/sync?action=register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password: pass }),
       });
-      const data = await res.json();
-      if (data.success) {
-        return { success: true };
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          return { success: true };
+        }
       }
-      return { success: false, message: data.message || '注册失败' };
     } catch {
-      return { success: false, message: '无法连接数据库进行注册，请检查 D1 绑定' };
+      // D1 API unavailable, fall back to LocalStorage registration
     }
+
+    // 2. LocalStorage Registration fallback (No D1 DB required)
+    const localUsers = JSON.parse(localStorage.getItem('wf_registered_users') || '{}');
+    localUsers[username] = pass;
+    localStorage.setItem('wf_registered_users', JSON.stringify(localUsers));
+    return { success: true, message: '注册成功(本地挂载模式)' };
   };
 
   const logout = () => {

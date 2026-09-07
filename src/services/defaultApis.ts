@@ -7,10 +7,10 @@ export interface CmsApiSource {
 }
 
 export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
+  { id: 'ffzy', name: '非凡资源(FFM3U8)', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'bfzy', name: '暴风资源', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'ikun', name: 'iKun资源', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'lzzy', name: '量子资源', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video', isDefault: true },
-  { id: 'ffzy', name: '非凡资源', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'hnzy', name: '红牛资源', url: 'https://www.hongniuzy2.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'kuaici', name: '快车资源', url: 'https://caiji.kuaici.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'snzy', name: '索尼资源', url: 'https://suoniapi.com/api.php/provide/vod', type: 'video', isDefault: true },

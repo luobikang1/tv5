@@ -16,21 +16,29 @@ export const SearchPage: React.FC = () => {
   const [webVideoUrl, setWebVideoUrl] = useState('');
   const [activeWebEmbedUrl, setActiveWebEmbedUrl] = useState('');
 
+  const [useProxyPlayer, setUseProxyPlayer] = useState(true);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!keyword.trim()) return;
 
     if (searchMode === 'web') {
-      // If keyword looks like a URL or Youtube query, set embed
       let targetUrl = keyword.trim();
+
       if (targetUrl.includes('youtube.com/watch?v=') || targetUrl.includes('youtu.be/')) {
         const videoId = targetUrl.split('v=')[1]?.split('&')[0] || targetUrl.split('youtu.be/')[1]?.split('?')[0];
         if (videoId) {
-          targetUrl = `https://www.youtube.com/embed/${videoId}`;
+          targetUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
         }
-      } else if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      } else if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        if (useProxyPlayer && (targetUrl.includes('.m3u8') || targetUrl.includes('.mp4'))) {
+          targetUrl = `/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+        }
+      } else {
+        // Bilingual search across internet video engines
         targetUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(targetUrl)}`;
       }
+
       setActiveWebEmbedUrl(targetUrl);
       setHasSearched(true);
       return;
@@ -77,7 +85,7 @@ export const SearchPage: React.FC = () => {
             }`}
           >
             <Film className="w-4 h-4" />
-            <span>20+ 影视源站聚合搜索</span>
+            <span>FFM3U8 / 20+ 源站聚合搜索</span>
           </button>
           <button
             type="button"
@@ -88,8 +96,8 @@ export const SearchPage: React.FC = () => {
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            <Youtube className="w-4 h-4 text-red-500" />
-            <span>全网互联网 / YouTube 视频</span>
+            <Globe className="w-4 h-4 text-emerald-500" />
+            <span>中英文互联网 / 全网代理播放</span>
           </button>
         </div>
 
