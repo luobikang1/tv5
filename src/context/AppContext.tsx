@@ -30,9 +30,11 @@ interface AppContextType {
   registerUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 
-  // Theme
+  // Theme & Custom Background Color
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  bgColor: string;
+  setBgColor: (color: string) => void;
 
   // Resolution
   defaultResolution: VideoQuality;
@@ -68,6 +70,7 @@ const STORAGE_KEYS = {
   PASSWORD: 'wf_password',
   USER: 'wf_logged_user',
   THEME: 'wf_theme',
+  BG_COLOR: 'wf_bg_color',
   RESOLUTION: 'wf_resolution',
   APIS: 'wf_custom_apis',
   ADULT: 'wf_show_adult',
@@ -98,6 +101,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.THEME);
     return saved ? saved === 'dark' : true;
+  });
+
+  // Background Color State
+  const [bgColor, setBgColorState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.BG_COLOR) || '';
   });
 
   // Resolution State (Default 360p)
@@ -136,6 +144,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEYS.THEME, 'light');
     }
   }, [isDarkMode]);
+
+  useEffect(() => {
+    if (bgColor) {
+      document.body.style.backgroundColor = bgColor;
+      localStorage.setItem(STORAGE_KEYS.BG_COLOR, bgColor);
+    } else {
+      document.body.style.backgroundColor = '';
+      localStorage.removeItem(STORAGE_KEYS.BG_COLOR);
+    }
+  }, [bgColor]);
+
+  const setBgColor = (color: string) => {
+    setBgColorState(color);
+  };
 
   useEffect(() => {
     if (d1Enabled) {
@@ -318,6 +340,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         isDarkMode,
         toggleDarkMode,
+        bgColor,
+        setBgColor,
         defaultResolution,
         setDefaultResolution,
         apiList,

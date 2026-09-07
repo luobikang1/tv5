@@ -15,6 +15,9 @@ import {
   Radio,
   LogOut,
   User,
+  Palette,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -23,6 +26,10 @@ export const SettingsPage: React.FC = () => {
     setPassword,
     currentUser,
     logout,
+    isDarkMode,
+    toggleDarkMode,
+    bgColor,
+    setBgColor,
     defaultResolution,
     setDefaultResolution,
     apiList,
@@ -134,6 +141,54 @@ export const SettingsPage: React.FC = () => {
             <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
           </button>
         </form>
+      </section>
+
+      {/* Theme & Background Color Customization */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Palette className="w-5 h-5 text-fox-500" />
+            <h2>夜间模式与背景颜色调节</h2>
+          </div>
+          <button
+            onClick={toggleDarkMode}
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center space-x-2 border border-slate-200 dark:border-slate-700"
+          >
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            <span>{isDarkMode ? '已开启夜间模式' : '已开启日间模式'}</span>
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          自定义选择整站背景调色盘，适配护眼夜间或暗黑模式。
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {[
+            { label: '默认主题', color: '' },
+            { label: '纯黑夜间', color: '#000000' },
+            { label: '深蓝夜色', color: '#0b0f19' },
+            { label: '护眼墨绿', color: '#0a1f18' },
+            { label: '暖紫暗夜', color: '#160d21' },
+            { label: '浅灰日间', color: '#f8fafc' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => setBgColor(item.color)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 border transition-all ${
+                bgColor === item.color
+                  ? 'border-fox-500 bg-fox-500 text-white shadow-md'
+                  : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full border border-slate-400"
+                style={{ backgroundColor: item.color || '#0f172a' }}
+              />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* Default Video Quality Selection */}

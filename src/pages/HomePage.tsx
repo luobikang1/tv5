@@ -39,16 +39,22 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      <section className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-fox-600 via-fox-500 to-amber-600 p-8 sm:p-12 text-white shadow-2xl">
+      <section className="relative rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] p-8 sm:p-12 text-white shadow-2xl flex items-end">
+        <img
+          src="/hero-bg.webp"
+          alt="Hero Background"
+          className="absolute inset-0 w-full h-full object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-fox-500/80 backdrop-blur-md text-xs font-bold border border-fox-400/40 shadow-lg">
             <Sparkles className="w-4 h-4 text-amber-300" />
             <span>白狐5 极速流媒体引擎</span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight drop-shadow-md">
             高码率低延迟 · 畅享极速影视
           </h1>
-          <p className="text-white/80 text-sm sm:text-base">
+          <p className="text-slate-200 text-sm sm:text-base leading-relaxed drop-shadow">
             内置 20+ 优质源站接口，多码率自适应切换（低至 360P），支持 Cloudflare / Vercel / Docker 多端一键部署。
           </p>
         </div>
