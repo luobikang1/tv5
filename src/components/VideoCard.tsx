@@ -60,17 +60,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-        {/* Favorite heart button top-right */}
+        {/* Favorite heart button top-right - z-30 ensures clickability over hover backdrop */}
         <button
           onClick={handleFavoriteClick}
+          type="button"
           title={favorited ? '取消收藏' : '一键收藏'}
-          className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all shadow ${
+          className={`absolute top-2 right-2 z-30 p-2 rounded-full backdrop-blur-md transition-all shadow-lg transform active:scale-125 ${
             favorited
-              ? 'bg-red-500 text-white'
-              : 'bg-black/40 text-white/80 hover:bg-black/70 hover:text-white'
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-black/50 text-white/90 hover:bg-red-500 hover:text-white'
           }`}
         >
-          <Heart className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
+          <Heart className={`w-4 h-4 ${favorited ? 'fill-current text-white' : ''}`} />
         </button>
 
         <div className="absolute inset-0 flex items-center justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

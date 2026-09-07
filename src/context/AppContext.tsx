@@ -364,12 +364,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleFavorite = (item: Omit<WatchHistoryItem, 'updated_at'>) => {
     setFavoritesList((prev) => {
-      const exists = prev.some((f) => String(f.id) === String(item.id));
+      const targetId = String(item.id);
+      const exists = prev.some(
+        (f) => String(f.id) === targetId || (String(f.vod_id) === String(item.vod_id) && String(f.source_id) === String(item.source_id))
+      );
       let updated: WatchHistoryItem[];
       if (exists) {
-        updated = prev.filter((f) => String(f.id) !== String(item.id));
+        updated = prev.filter(
+          (f) => String(f.id) !== targetId && !(String(f.vod_id) === String(item.vod_id) && String(f.source_id) === String(item.source_id))
+        );
       } else {
-        updated = [{ ...item, updated_at: Date.now() }, ...prev];
+        updated = [{ ...item, id: targetId, updated_at: Date.now() }, ...prev];
       }
       localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
       return updated;
@@ -377,7 +382,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const isFavorite = (id: string | number) => {
-    return favoritesList.some((f) => String(f.id) === String(id));
+    const targetId = String(id);
+    return favoritesList.some(
+      (f) => String(f.id) === targetId || targetId.includes(String(f.vod_id))
+    );
   };
 
   const setLoginBgImage = (bg: string) => {
