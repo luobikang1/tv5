@@ -30,9 +30,11 @@ interface AppContextType {
   registerUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 
-  // Theme
+  // Theme & Background
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  customBgImage: string;
+  setCustomBgImage: (bg: string) => void;
 
   // Resolution
   defaultResolution: VideoQuality;
@@ -68,6 +70,7 @@ const STORAGE_KEYS = {
   PASSWORD: 'wf_password',
   USER: 'wf_logged_user',
   THEME: 'wf_theme',
+  CUSTOM_BG: 'wf_custom_bg',
   RESOLUTION: 'wf_resolution',
   APIS: 'wf_custom_apis',
   ADULT: 'wf_show_adult',
@@ -98,6 +101,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.THEME);
     return saved ? saved === 'dark' : true;
+  });
+
+  // Custom Background State
+  const [customBgImage, setCustomBgImageState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.CUSTOM_BG) || '';
   });
 
   // Resolution State (Default 360p)
@@ -149,6 +157,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [d1Enabled]);
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
+
+  const setCustomBgImage = (bg: string) => {
+    setCustomBgImageState(bg);
+    if (bg) {
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_BG, bg);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CUSTOM_BG);
+    }
+  };
 
   const verifyPassword = (inputPass: string): boolean => {
     if (!currentPassword || inputPass === currentPassword) {
@@ -298,6 +315,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     setIsUnlocked(true);
     setIsDarkMode(true);
+    setCustomBgImageState('');
     setDefaultResolutionState('360');
     setApiList(DEFAULT_VIDEO_APIS);
     setShowAdultColumnState(false);
@@ -318,6 +336,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         isDarkMode,
         toggleDarkMode,
+        customBgImage,
+        setCustomBgImage,
         defaultResolution,
         setDefaultResolution,
         apiList,

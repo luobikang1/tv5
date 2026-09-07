@@ -1,4 +1,15 @@
 export async function onRequest(context: any) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Type, Accept-Ranges',
+  };
+
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const url = new URL(context.request.url);
   const targetUrl = url.searchParams.get('url');
 
@@ -7,7 +18,7 @@ export async function onRequest(context: any) {
       status: 400,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        ...corsHeaders,
       },
     });
   }
@@ -30,10 +41,7 @@ export async function onRequest(context: any) {
     });
 
     const responseHeaders = new Headers(response.headers);
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', '*');
-    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+    Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
     responseHeaders.set('Cache-Control', 'public, max-age=300');
 
     return new Response(response.body, {
@@ -47,7 +55,7 @@ export async function onRequest(context: any) {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
         },
       }
     );

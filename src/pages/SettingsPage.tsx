@@ -15,6 +15,9 @@ import {
   Radio,
   LogOut,
   User,
+  Image as ImageIcon,
+  Upload,
+  X,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -31,6 +34,8 @@ export const SettingsPage: React.FC = () => {
     resetDefaultApis,
     showAdultColumn,
     setShowAdultColumn,
+    customBgImage,
+    setCustomBgImage,
     restoreDefaultSettings,
     d1Enabled,
     setD1Enabled,
@@ -39,6 +44,8 @@ export const SettingsPage: React.FC = () => {
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
   const [showPass, setShowPass] = useState(false);
   const [passSaved, setPassSaved] = useState(false);
+
+  const [bgUrlInput, setBgUrlInput] = useState('');
 
   const [newApiName, setNewApiName] = useState('');
   const [newApiUrl, setNewApiUrl] = useState('');
@@ -65,6 +72,32 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('上传图片大小建议不超过 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setCustomBgImage(result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBgUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (bgUrlInput.trim()) {
+      setCustomBgImage(bgUrlInput.trim());
+      setBgUrlInput('');
+    }
+  };
+
   return (
     <div className="space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
@@ -76,7 +109,7 @@ export const SettingsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与个性化设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理独立访问密码、默认清晰度、视频接口与同步设置
+              管理独立访问密码、自定义主页背景、默认清晰度、视频接口与同步设置
             </p>
           </div>
         </div>
@@ -134,6 +167,63 @@ export const SettingsPage: React.FC = () => {
             <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
           </button>
         </form>
+      </section>
+
+      {/* Custom Home Background Image */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+          <ImageIcon className="w-5 h-5 text-fox-500" />
+          <h2>自定义主页背景</h2>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          支持上传本地图片文件或输入图片 URL，个性化定制主页顶栏与视觉背景。
+        </p>
+
+        <div className="space-y-4 max-w-xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="cursor-pointer px-4 py-2.5 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs shadow-md shadow-fox-500/20 flex items-center space-x-2 transition-all">
+              <Upload className="w-4 h-4" />
+              <span>上传本地图片</span>
+              <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+            </label>
+
+            {customBgImage && (
+              <button
+                type="button"
+                onClick={() => setCustomBgImage('')}
+                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
+              >
+                <X className="w-4 h-4" />
+                <span>重置为默认背景</span>
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleBgUrlSubmit} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={bgUrlInput}
+              onChange={(e) => setBgUrlInput(e.target.value)}
+              placeholder="或输入网络图片 URL (如 https://.../bg.jpg)"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-medium"
+            >
+              应用链接
+            </button>
+          </form>
+
+          {customBgImage && (
+            <div className="relative rounded-2xl overflow-hidden aspect-video max-h-40 border border-slate-200 dark:border-slate-800">
+              <img src={customBgImage} alt="自定义背景预览" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-white text-xs font-semibold">
+                当前主页自定义背景预览
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Default Video Quality Selection */}
@@ -279,7 +369,7 @@ export const SettingsPage: React.FC = () => {
       <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
         <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          清除本地所有浏览历史、访问密码、自定 API 接口配置，并恢复出厂默认状态。
+          清除本地所有浏览历史、访问密码、自定 API 接口配置、自定义背景，并恢复出厂默认状态。
         </p>
         <button
           onClick={() => {
