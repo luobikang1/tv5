@@ -9,6 +9,7 @@ export interface WatchHistoryItem {
   vod_pic?: string;
   source_id: string;
   source_name: string;
+  episode_index?: number;
   episode_name?: string;
   episode_url?: string;
   progress?: number;
@@ -283,7 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addHistory = (item: Omit<WatchHistoryItem, 'updated_at'>) => {
     setHistoryList((prev) => {
-      const filtered = prev.filter((h) => h.id !== item.id);
+      const filtered = prev.filter((h) => String(h.id) !== String(item.id));
       const updated = [{ ...item, updated_at: Date.now() }, ...filtered].slice(0, 100);
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
 

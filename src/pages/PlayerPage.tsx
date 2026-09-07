@@ -8,7 +8,7 @@ import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy }
 export const PlayerPage: React.FC = () => {
   const { sourceId, vodId } = useParams<{ sourceId: string; vodId: string }>();
   const navigate = useNavigate();
-  const { apiList, addHistory } = useApp();
+  const { apiList, addHistory, historyList } = useApp();
 
   const [video, setVideo] = useState<VideoItem | null>(null);
   const [playSources, setPlaySources] = useState<PlaySource[]>([]);
@@ -31,15 +31,28 @@ export const PlayerPage: React.FC = () => {
         setPlaySources(parsedSources);
 
         if (parsedSources.length > 0 && parsedSources[0].episodes.length > 0) {
+          // Check if there is an existing history entry for this video
+          const historyId = `${sourceId}-${vodId}`;
+          const existing = historyList.find((h) => String(h.id) === historyId);
+
+          let initialEpIndex = 0;
+          if (existing && typeof existing.episode_index === 'number' && existing.episode_index < parsedSources[0].episodes.length) {
+            initialEpIndex = existing.episode_index;
+          }
+
+          setActiveEpisodeIndex(initialEpIndex);
+
+          const targetEp = parsedSources[0].episodes[initialEpIndex];
           addHistory({
-            id: `${sourceId}-${vodId}`,
+            id: historyId,
             vod_id: vodId,
             vod_name: data.vod_name,
             vod_pic: data.vod_pic,
             source_id: sourceId,
             source_name: api.name,
-            episode_name: parsedSources[0].episodes[0].name,
-            episode_url: parsedSources[0].episodes[0].url,
+            episode_index: initialEpIndex,
+            episode_name: targetEp.name,
+            episode_url: targetEp.url,
           });
         }
       }
@@ -63,6 +76,7 @@ export const PlayerPage: React.FC = () => {
         vod_pic: video.vod_pic,
         source_id: sourceId,
         source_name: video.source_name || '',
+        episode_index: epIndex,
         episode_name: ep.name,
         episode_url: ep.url,
       });
