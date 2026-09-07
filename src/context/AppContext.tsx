@@ -43,6 +43,7 @@ interface AppContextType {
   // APIs Management
   apiList: CmsApiSource[];
   addCustomApi: (api: CmsApiSource) => void;
+  updateCustomApi: (id: string, updatedFields: Partial<CmsApiSource>) => void;
   removeCustomApi: (id: string) => void;
   resetDefaultApis: () => void;
 
@@ -247,7 +248,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addCustomApi = (api: CmsApiSource) => {
+    const exists = apiList.some((item) => item.id === api.id || item.url === api.url);
+    if (exists) return;
     const updated = [api, ...apiList];
+    setApiList(updated);
+    localStorage.setItem(STORAGE_KEYS.APIS, JSON.stringify(updated));
+  };
+
+  const updateCustomApi = (id: string, updatedFields: Partial<CmsApiSource>) => {
+    const updated = apiList.map((item) => (item.id === id ? { ...item, ...updatedFields } : item));
     setApiList(updated);
     localStorage.setItem(STORAGE_KEYS.APIS, JSON.stringify(updated));
   };
@@ -342,6 +351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setDefaultResolution,
         apiList,
         addCustomApi,
+        updateCustomApi,
         removeCustomApi,
         resetDefaultApis,
         showAdultColumn,

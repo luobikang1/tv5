@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, VideoQuality } from '../context/AppContext';
-import { CmsApiSource } from '../services/defaultApis';
+import { CmsApiSource, SEARCHABLE_INTERNET_APIS } from '../services/defaultApis';
 import {
   Lock,
   Settings,
@@ -18,6 +18,10 @@ import {
   Image as ImageIcon,
   Upload,
   X,
+  Globe,
+  BookmarkPlus,
+  Edit3,
+  Search,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -30,6 +34,7 @@ export const SettingsPage: React.FC = () => {
     setDefaultResolution,
     apiList,
     addCustomApi,
+    updateCustomApi,
     removeCustomApi,
     resetDefaultApis,
     showAdultColumn,
@@ -50,6 +55,11 @@ export const SettingsPage: React.FC = () => {
   const [newApiName, setNewApiName] = useState('');
   const [newApiUrl, setNewApiUrl] = useState('');
 
+  const [searchFilter, setSearchFilter] = useState('');
+  const [editingApiId, setEditingApiId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUrl, setEditUrl] = useState('');
+
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setPassword(newPasswordInput);
@@ -69,6 +79,19 @@ export const SettingsPage: React.FC = () => {
       addCustomApi(newApi);
       setNewApiName('');
       setNewApiUrl('');
+    }
+  };
+
+  const handleStartEdit = (api: CmsApiSource) => {
+    setEditingApiId(api.id);
+    setEditName(api.name);
+    setEditUrl(api.url);
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (editName.trim() && editUrl.trim()) {
+      updateCustomApi(id, { name: editName.trim(), url: editUrl.trim() });
+      setEditingApiId(null);
     }
   };
 
@@ -98,6 +121,14 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const filteredInternetApis = SEARCHABLE_INTERNET_APIS.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      item.url.toLowerCase().includes(searchFilter.toLowerCase()) ||
+      (item.language && item.language.toLowerCase().includes(searchFilter.toLowerCase())) ||
+      (item.description && item.description.toLowerCase().includes(searchFilter.toLowerCase()))
+  );
+
   return (
     <div className="space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
@@ -109,7 +140,7 @@ export const SettingsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与个性化设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理独立访问密码、自定义主页背景、默认清晰度、视频接口与同步设置
+              管理独立访问密码、自定义主页背景、默认清晰度、互联网 API 检索与同步设置
             </p>
           </div>
         </div>
@@ -226,6 +257,65 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Internet API Search & One-click Save */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+          <Globe className="w-5 h-5 text-fox-500" />
+          <h2>互联网 API 检索库 (包含非中文源)</h2>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          在线搜索互联网公共 API 节点（支持欧美原声、动漫、切片极速源等），支持一键添加保存至您的可用接口列表。
+        </p>
+
+        <div className="relative max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="搜索 API 名称、语种 (如 English/中文) 或关键词..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+          {filteredInternetApis.map((item) => {
+            const isAlreadyAdded = apiList.some((a) => a.url === item.url);
+            return (
+              <div
+                key={item.id}
+                className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+              >
+                <div className="min-w-0 pr-2 space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{item.name}</span>
+                    {item.language && (
+                      <span className="px-1.5 py-0.5 rounded bg-fox-100 dark:bg-fox-950 text-fox-600 dark:text-fox-400 text-[10px] font-semibold">
+                        {item.language}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate">{item.description || item.url}</p>
+                </div>
+
+                <button
+                  onClick={() => addCustomApi(item)}
+                  disabled={isAlreadyAdded}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
+                    isAlreadyAdded
+                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                      : 'bg-fox-500 hover:bg-fox-600 text-white shadow'
+                  }`}
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  <span>{isAlreadyAdded ? '已在列表中' : '一键保存'}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Default Video Quality Selection */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -301,7 +391,7 @@ export const SettingsPage: React.FC = () => {
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            内置与自定义 API 接口管理 ({apiList.length} 个)
+            已加入与自定义 API 接口管理 ({apiList.length} 个)
           </h2>
           <button
             onClick={resetDefaultApis}
@@ -345,20 +435,63 @@ export const SettingsPage: React.FC = () => {
           {apiList.map((api) => (
             <div
               key={api.id}
-              className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+              className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col justify-between text-xs space-y-2"
             >
-              <div className="min-w-0 pr-2">
-                <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
-                <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
-              </div>
-              {!api.isDefault && (
-                <button
-                  onClick={() => removeCustomApi(api.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                  title="删除此接口"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              {editingApiId === api.id ? (
+                <div className="space-y-2 w-full">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={editUrl}
+                    onChange={(e) => setEditUrl(e.target.value)}
+                    className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-xs"
+                  />
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleSaveEdit(api.id)}
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded text-[11px] font-semibold"
+                    >
+                      保存更新
+                    </button>
+                    <button
+                      onClick={() => setEditingApiId(null)}
+                      className="px-2.5 py-1 bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-[11px]"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
+                  </div>
+
+                  <div className="flex items-center space-x-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleStartEdit(api)}
+                      className="p-1.5 text-slate-400 hover:text-fox-500 transition-colors"
+                      title="更新 / 编辑此接口"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    {!api.isDefault && (
+                      <button
+                        onClick={() => removeCustomApi(api.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                        title="删除此接口"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           ))}
