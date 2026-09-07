@@ -9,17 +9,19 @@ export const HomePage: React.FC = () => {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [adultVideos, setAdultVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeApiIndex, setActiveApiIndex] = useState(0);
+  const normalApis = apiList.filter((a) => a.type !== 'adult');
+  const [activeApiId, setActiveApiId] = useState<string>(() => normalApis[0]?.id || apiList[0]?.id || '');
+
+  const activeApi = apiList.find((a) => a.id === activeApiId) || normalApis[0] || apiList[0];
 
   const loadData = async () => {
     setLoading(true);
-    if (apiList.length === 0) {
+    if (!activeApi) {
       setLoading(false);
       return;
     }
 
-    const currentApi = apiList[activeApiIndex] || apiList[0];
-    const res = await fetchVodList(currentApi, { page: 1 });
+    const res = await fetchVodList(activeApi, { page: 1 });
     setVideos(res.list);
 
     if (showAdultColumn) {
@@ -35,7 +37,7 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeApiIndex, showAdultColumn, apiList]);
+  }, [activeApiId, showAdultColumn, apiList]);
 
   return (
     <div className="space-y-8 pb-16">
@@ -76,21 +78,19 @@ export const HomePage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
-          {apiList
-            .filter((a) => a.type !== 'adult')
-            .map((api, idx) => (
-              <button
-                key={api.id}
-                onClick={() => setActiveApiIndex(idx)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  activeApiIndex === idx
-                    ? 'bg-fox-500 text-white shadow-lg shadow-fox-500/25 scale-105'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {api.name}
-              </button>
-            ))}
+          {normalApis.map((api) => (
+            <button
+              key={api.id}
+              onClick={() => setActiveApiId(api.id)}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                activeApi?.id === api.id
+                  ? 'bg-fox-500 text-white shadow-lg shadow-fox-500/25 scale-105'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {api.name}
+            </button>
+          ))}
         </div>
       </section>
 

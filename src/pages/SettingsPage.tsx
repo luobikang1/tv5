@@ -60,10 +60,14 @@ export const SettingsPage: React.FC = () => {
   const handleAddApi = (e: React.FormEvent) => {
     e.preventDefault();
     if (newApiName.trim() && newApiUrl.trim()) {
+      let formattedUrl = newApiUrl.trim();
+      if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+        formattedUrl = `https://${formattedUrl}`;
+      }
       const newApi: CmsApiSource = {
         id: `custom_${Date.now()}`,
         name: newApiName.trim(),
-        url: newApiUrl.trim(),
+        url: formattedUrl,
         type: 'video',
       };
       addCustomApi(newApi);
