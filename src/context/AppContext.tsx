@@ -162,11 +162,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
+    const root = document.documentElement;
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
       localStorage.setItem(STORAGE_KEYS.THEME, 'dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
       localStorage.setItem(STORAGE_KEYS.THEME, 'light');
     }
   }, [isDarkMode]);
@@ -174,9 +175,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (bgColor) {
       document.body.style.backgroundColor = bgColor;
+      document.documentElement.style.backgroundColor = bgColor;
       localStorage.setItem(STORAGE_KEYS.BG_COLOR, bgColor);
     } else {
       document.body.style.backgroundColor = '';
+      document.documentElement.style.backgroundColor = '';
       localStorage.removeItem(STORAGE_KEYS.BG_COLOR);
     }
   }, [bgColor]);

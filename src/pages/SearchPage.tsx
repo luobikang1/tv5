@@ -97,7 +97,7 @@ export const SearchPage: React.FC = () => {
             }`}
           >
             <Globe className="w-4 h-4 text-emerald-500" />
-            <span>中英文互联网 / 全网代理播放</span>
+            <span>互联网全网视频搜索引擎 (中英文/代理播放)</span>
           </button>
         </div>
 
