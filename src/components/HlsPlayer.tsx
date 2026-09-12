@@ -252,9 +252,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({
       });
       hlsRef.current.currentLevel = bestIndex;
       setCurrentLevel(bestIndex);
-      setSelectedQualityText(pVal === '360' ? '360P 省流' : `${pVal}P`);
+      setSelectedQualityText(pVal === '240' ? '240P 超省流' : pVal === '360' ? '360P 省流' : `${pVal}P`);
     } else {
-      setSelectedQualityText(pVal === '360' ? '360P 省流' : `${pVal}P`);
+      setSelectedQualityText(pVal === '240' ? '240P 超省流' : pVal === '360' ? '360P 省流' : `${pVal}P`);
     }
     setShowQualityMenu(false);
   };
@@ -326,6 +326,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({
                   分辨率省流调节
                 </div>
                 {[
+                  { label: '240P (超省流)', val: '240' },
                   { label: '360P (省流模式)', val: '360' },
                   { label: '480P (标清)', val: '480' },
                   { label: '720P (高清)', val: '720' },

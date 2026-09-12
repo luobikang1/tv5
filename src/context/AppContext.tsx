@@ -16,7 +16,7 @@ export interface WatchHistoryItem {
   updated_at: number;
 }
 
-export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
+export type VideoQuality = '240' | '360' | '480' | '720' | '1080' | 'auto';
 
 interface AppContextType {
   // Password & Security

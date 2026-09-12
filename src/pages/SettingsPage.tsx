@@ -205,8 +205,8 @@ export const SettingsPage: React.FC = () => {
           设定进入播放页时的默认画质选项，针对低网速环境优化，默认为 360P 流畅模式。
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-xl">
-          {(['360', '480', '720', '1080', 'auto'] as VideoQuality[]).map((q) => (
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 max-w-2xl">
+          {(['240', '360', '480', '720', '1080', 'auto'] as VideoQuality[]).map((q) => (
             <button
               key={q}
               onClick={() => setDefaultResolution(q)}
