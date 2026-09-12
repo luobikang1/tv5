@@ -1,15 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw, Sun, Volume1 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HlsPlayerProps {
   url: string;
   title?: string;
   onEnded?: () => void;
+  externalBrightness?: number;
+  externalVolume?: number;
+  onBrightnessChange?: (val: number) => void;
+  onVolumeChange?: (val: number) => void;
 }
 
-export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => {
+export const HlsPlayer: React.FC<HlsPlayerProps> = ({
+  url,
+  title,
+  onEnded,
+  externalBrightness,
+  externalVolume,
+  onBrightnessChange,
+  onVolumeChange,
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const { defaultResolution } = useApp();
@@ -18,13 +30,49 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [isMuted, setIsMuted] = useState(false);
   const [levels, setLevels] = useState<{ id: number; name: string; height: number }[]>([]);
   const [currentLevel, setCurrentLevel] = useState<number>(-1);
+  const [selectedQualityText, setSelectedQualityText] = useState<string>('360P 省流');
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [useProxyFallback, setUseProxyFallback] = useState(false);
 
+  // Brightness (50% ~ 150%) & Volume (0 ~ 100%)
+  const [brightness, setBrightnessState] = useState<number>(externalBrightness ?? 100);
+  const [volume, setVolumeState] = useState<number>(externalVolume ?? 100);
+
+  useEffect(() => {
+    if (typeof externalBrightness === 'number') {
+      setBrightnessState(externalBrightness);
+    }
+  }, [externalBrightness]);
+
+  useEffect(() => {
+    if (typeof externalVolume === 'number') {
+      setVolumeState(externalVolume);
+    }
+  }, [externalVolume]);
+
+  const handleBrightness = (val: number) => {
+    setBrightnessState(val);
+    if (onBrightnessChange) onBrightnessChange(val);
+  };
+
+  const handleVolume = (val: number) => {
+    setVolumeState(val);
+    if (onVolumeChange) onVolumeChange(val);
+    if (videoRef.current) {
+      videoRef.current.volume = val / 100;
+      if (val === 0) {
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      } else {
+        videoRef.current.muted = false;
+        setIsMuted(false);
+      }
+    }
+  };
+
   const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
     let cleanUrl = rawUrl.trim();
-    // Auto-detect mixed content (HTTP url on HTTPS page)
     const isHttpsPage = window.location.protocol === 'https:';
     if ((useProxy || (isHttpsPage && cleanUrl.startsWith('http:'))) && !cleanUrl.includes('/api/proxy')) {
       return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
@@ -41,16 +89,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
 
     const cleanUrl = url.trim();
     const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
-
-    // If stream URL is an HTML page / iframe player rather than direct video/hls media
-    const isDirectMedia = cleanUrl.includes('.m3u8') || cleanUrl.includes('.mp4') || cleanUrl.includes('.webm') || cleanUrl.includes('.flv');
-
-    if (!isDirectMedia && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) && !useProxyFallback) {
-      // Direct html/iframe embed URL
-      if (cleanUrl.includes('share') || cleanUrl.includes('embed') || cleanUrl.includes('parse') || cleanUrl.includes('html')) {
-        // Will render in iframe fallback mode if user or system requests
-      }
-    }
 
     if (playableUrl.includes('.mp4') || playableUrl.includes('.webm')) {
       video.src = playableUrl;
@@ -75,7 +113,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         startLevel: -1,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
-          // Proxy sub-playlists or TS segments if main stream uses proxy fallback or HTTPS mixed content
           const isHttpsPage = window.location.protocol === 'https:';
           if ((useProxyFallback || (isHttpsPage && requestUrl.startsWith('http:'))) && !requestUrl.includes('/api/proxy')) {
             const proxied = `/api/proxy?url=${encodeURIComponent(requestUrl)}`;
@@ -96,13 +133,25 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         }));
         setLevels(availableLevels);
 
-        if (defaultResolution !== 'auto' && availableLevels.length > 0) {
-          const targetHeight = parseInt(defaultResolution, 10);
-          const foundIndex = availableLevels.findIndex((l) => Math.abs(l.height - targetHeight) < 100);
-          if (foundIndex !== -1) {
-            hls.currentLevel = foundIndex;
-            setCurrentLevel(foundIndex);
-          }
+        // Apply default resolution setting (360P / 480P / 720P / 1080P)
+        const targetQuality = defaultResolution || '360';
+        if (targetQuality !== 'auto' && availableLevels.length > 0) {
+          const targetHeight = parseInt(targetQuality, 10);
+          let bestMatch = 0;
+          let minDiff = Infinity;
+          availableLevels.forEach((lvl, idx) => {
+            const diff = Math.abs(lvl.height - targetHeight);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestMatch = idx;
+            }
+          });
+          hls.currentLevel = bestMatch;
+          setCurrentLevel(bestMatch);
+          setSelectedQualityText(availableLevels[bestMatch]?.name || `${targetQuality}P`);
+        } else {
+          setCurrentLevel(-1);
+          setSelectedQualityText('自动码率');
         }
 
         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
@@ -113,7 +162,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               if (!useProxyFallback) {
-                console.log('Network error detected, enabling proxy fallback...');
                 setUseProxyFallback(true);
               } else {
                 hls.startLoad();
@@ -182,12 +230,33 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     }
   };
 
-  const changeQuality = (levelId: number) => {
-    if (hlsRef.current) {
-      hlsRef.current.currentLevel = levelId;
-      setCurrentLevel(levelId);
+  const selectResolutionByP = (pVal: string) => {
+    if (pVal === 'auto') {
+      if (hlsRef.current) hlsRef.current.currentLevel = -1;
+      setCurrentLevel(-1);
+      setSelectedQualityText('自动 (Auto)');
       setShowQualityMenu(false);
+      return;
     }
+
+    const targetHeight = parseInt(pVal, 10);
+    if (hlsRef.current && levels.length > 0) {
+      let bestIndex = 0;
+      let minDiff = Infinity;
+      levels.forEach((lvl, index) => {
+        const diff = Math.abs(lvl.height - targetHeight);
+        if (diff < minDiff) {
+          minDiff = diff;
+          bestIndex = index;
+        }
+      });
+      hlsRef.current.currentLevel = bestIndex;
+      setCurrentLevel(bestIndex);
+      setSelectedQualityText(pVal === '240' ? '240P 超省流' : pVal === '360' ? '360P 省流' : `${pVal}P`);
+    } else {
+      setSelectedQualityText(pVal === '240' ? '240P 超省流' : pVal === '360' ? '360P 省流' : `${pVal}P`);
+    }
+    setShowQualityMenu(false);
   };
 
   return (
@@ -212,7 +281,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
       <video
         ref={videoRef}
         onEnded={onEnded}
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain transition-all duration-150"
+        style={{ filter: `brightness(${brightness}%)` }}
         playsInline
       />
 
@@ -240,38 +310,35 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
             {useProxyFallback ? '代理反查已开启' : '启用极速代理'}
           </button>
 
+          {/* Resolution Selector Menu */}
           <div className="relative">
             <button
               onClick={() => setShowQualityMenu(!showQualityMenu)}
               className="flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 transition-colors border border-slate-700"
             >
               <Settings className="w-3.5 h-3.5" />
-              <span>
-                {currentLevel === -1
-                  ? `自适应 (${defaultResolution}P)`
-                  : levels.find((l) => l.id === currentLevel)?.name || '画质'}
-              </span>
+              <span>{selectedQualityText}</span>
             </button>
 
             {showQualityMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-32 bg-slate-900/95 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20 py-1 text-xs">
-                <button
-                  onClick={() => changeQuality(-1)}
-                  className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                    currentLevel === -1 ? 'text-fox-400 font-bold' : 'text-slate-300'
-                  }`}
-                >
-                  自动 (默认{defaultResolution}P)
-                </button>
-                {levels.map((lvl) => (
+              <div className="absolute bottom-full right-0 mb-2 w-36 bg-slate-900/95 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-20 py-1 text-xs">
+                <div className="px-3 py-1 text-[10px] text-slate-400 font-bold uppercase border-b border-slate-800">
+                  分辨率省流调节
+                </div>
+                {[
+                  { label: '240P (超省流)', val: '240' },
+                  { label: '360P (省流模式)', val: '360' },
+                  { label: '480P (标清)', val: '480' },
+                  { label: '720P (高清)', val: '720' },
+                  { label: '1080P (超清)', val: '1080' },
+                  { label: '自动 (Auto)', val: 'auto' },
+                ].map((q) => (
                   <button
-                    key={lvl.id}
-                    onClick={() => changeQuality(lvl.id)}
-                    className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                      currentLevel === lvl.id ? 'text-fox-400 font-bold' : 'text-slate-300'
-                    }`}
+                    key={q.val}
+                    onClick={() => selectResolutionByP(q.val)}
+                    className="w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors text-slate-300 flex items-center justify-between"
                   >
-                    {lvl.name}
+                    <span>{q.label}</span>
                   </button>
                 ))}
               </div>
