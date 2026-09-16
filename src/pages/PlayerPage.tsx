@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { fetchVodDetail, parsePlayUrls, VideoItem, PlaySource, Episode } from '../services/cmsApi';
 import { HlsPlayer } from '../components/HlsPlayer';
-import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy } from 'lucide-react';
+import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy, Sun, Volume2 } from 'lucide-react';
 
 export const PlayerPage: React.FC = () => {
   const { sourceId, vodId } = useParams<{ sourceId: string; vodId: string }>();
@@ -16,6 +16,10 @@ export const PlayerPage: React.FC = () => {
   const [activeEpisodeIndex, setActiveEpisodeIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Brightness (50% ~ 150%) & Volume (0% ~ 100%) controls
+  const [brightness, setBrightness] = useState(100);
+  const [volume, setVolume] = useState(100);
 
   useEffect(() => {
     const loadVideo = async () => {
@@ -31,7 +35,6 @@ export const PlayerPage: React.FC = () => {
         setPlaySources(parsedSources);
 
         if (parsedSources.length > 0 && parsedSources[0].episodes.length > 0) {
-          // Check if there is an existing history entry for this video
           const historyId = `${sourceId}-${vodId}`;
           const existing = historyList.find((h) => String(h.id) === historyId);
 
@@ -159,6 +162,10 @@ export const PlayerPage: React.FC = () => {
           url={currentEpisode.url}
           title={`${video.vod_name} - ${currentEpisode.name}`}
           onEnded={handleNextEpisode}
+          externalBrightness={brightness}
+          externalVolume={volume}
+          onBrightnessChange={setBrightness}
+          onVolumeChange={setVolume}
         />
       ) : null}
 
@@ -190,6 +197,37 @@ export const PlayerPage: React.FC = () => {
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? '已复制下载链接' : '复制集数直链'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Control Panel: Brightness & Volume Adjustment above Episode List */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-bold text-slate-800 dark:text-slate-200">
+          <div className="flex items-center space-x-3 flex-1 min-w-[200px]">
+            <Sun className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <span className="w-16">画面亮度: {brightness}%</span>
+            <input
+              type="range"
+              min="50"
+              max="150"
+              value={brightness}
+              onChange={(e) => setBrightness(Number(e.target.value))}
+              className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-fox-500"
+            />
+          </div>
+
+          <div className="flex items-center space-x-3 flex-1 min-w-[200px]">
+            <Volume2 className="w-4 h-4 text-fox-500 flex-shrink-0" />
+            <span className="w-16">播放音量: {volume}%</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-fox-500"
+            />
+          </div>
         </div>
       </div>
 

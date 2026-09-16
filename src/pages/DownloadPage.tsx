@@ -2,7 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { HlsPlayer } from '../components/HlsPlayer';
 import { VideoItem, parsePlayUrls, PlaySource, Episode } from '../services/cmsApi';
-import { Download, Play, Copy, Check, Link as LinkIcon, Info, ArrowLeft, Layers, Film } from 'lucide-react';
+import { Download, Play, Copy, Check, Link as LinkIcon, Info, ArrowLeft, Layers, Film, Tv } from 'lucide-react';
+
+interface TvChannel {
+  id: string;
+  name: string;
+  category: 'CCTV' | '卫视';
+  url: string;
+}
+
+const SATELLITE_TV_CHANNELS: TvChannel[] = [
+  { id: 'tv-1', name: 'CCTV-1 综合高清', category: 'CCTV', url: 'https://cctvtzy.cntv.kcdnvip.com/live/cctv1_2/index.m3u8' },
+  { id: 'tv-2', name: 'CCTV-13 新闻高清', category: 'CCTV', url: 'https://cctvtzy.cntv.kcdnvip.com/live/cctv13_2/index.m3u8' },
+  { id: 'tv-3', name: '湖南卫视 高清直播', category: '卫视', url: 'https://live.mgtv.com/live/hunantv/index.m3u8' },
+  { id: 'tv-4', name: '浙江卫视 高清直播', category: '卫视', url: 'https://cztv.live.miguvideo.com/live/cztv/index.m3u8' },
+  { id: 'tv-5', name: '东方卫视 高清直播', category: '卫视', url: 'https://live.smg.cn/dfws/index.m3u8' },
+  { id: 'tv-6', name: '江苏卫视 高清直播', category: '卫视', url: 'https://live.jstv.com/jstv/index.m3u8' },
+  { id: 'tv-7', name: '北京卫视 高清直播', category: '卫视', url: 'https://live.btv.com.cn/btv1/index.m3u8' },
+  { id: 'tv-8', name: '广东卫视 高清直播', category: '卫视', url: 'https://live.gdtv.cn/gdtv/index.m3u8' },
+  { id: 'tv-9', name: '深圳卫视 高清直播', category: '卫视', url: 'https://live.sztv.com.cn/sztv/index.m3u8' },
+];
 
 export const DownloadPage: React.FC = () => {
   const location = useLocation();
@@ -56,6 +75,11 @@ export const DownloadPage: React.FC = () => {
     }
   };
 
+  const selectSatelliteTv = (ch: TvChannel) => {
+    setDownloadUrl(ch.url);
+    setPlayingUrl(ch.url);
+  };
+
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -88,11 +112,11 @@ export const DownloadPage: React.FC = () => {
         <div className="flex items-center space-x-3 text-fox-500">
           <Download className="w-8 h-8" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
-            {passedVideo ? `下载与解析 - ${passedVideo.vod_name}` : '下载中心与在线解析播放'}
+            {passedVideo ? `下载与解析 - ${passedVideo.vod_name}` : '下载中心、全国卫视直播与在线解析播放'}
           </h1>
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          粘贴任何 M3U8 / MP4 视频链接，可直接在线流畅播放或一键复制链接使用 NDM / M3U8 Downloader 进行高速下载。
+          粘贴任何 M3U8 / MP4 视频链接或点击下方的全国央视/卫视直播频道，可直接在线流畅播放或一键复制链接使用 NDM / M3U8 Downloader 进行高速下载。
         </p>
 
         <form onSubmit={handlePlayInline} className="space-y-4 pt-2">
@@ -102,7 +126,7 @@ export const DownloadPage: React.FC = () => {
               type="text"
               value={downloadUrl}
               onChange={(e) => setDownloadUrl(e.target.value)}
-              placeholder="粘贴视频 M3U8 / MP4 直链地址 (例如: https://.../index.m3u8)"
+              placeholder="粘贴视频或卫视 M3U8 直链地址 (例如: https://.../index.m3u8)"
               className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 text-sm sm:text-base"
             />
           </div>
@@ -186,6 +210,34 @@ export const DownloadPage: React.FC = () => {
         )}
       </div>
 
+      {/* Satellite TV Live Channels Section */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
+        <div className="flex items-center space-x-2 font-bold text-slate-900 dark:text-slate-100 text-lg">
+          <Tv className="w-5 h-5 text-fox-500" />
+          <h2>全国央视 & 卫视直播频道</h2>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          点击下方卫视频道，可一键在线预览高清卫视直播流或获取直链。
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {SATELLITE_TV_CHANNELS.map((ch) => (
+            <button
+              key={ch.id}
+              onClick={() => selectSatelliteTv(ch)}
+              className={`p-3 rounded-2xl border text-left transition-all ${
+                downloadUrl === ch.url
+                  ? 'bg-fox-500 border-fox-500 text-white shadow-lg'
+                  : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-fox-500'
+              }`}
+            >
+              <div className="text-[10px] font-bold opacity-80 uppercase">{ch.category}</div>
+              <div className="text-xs font-bold truncate mt-0.5">{ch.name}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {playingUrl && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -198,11 +250,11 @@ export const DownloadPage: React.FC = () => {
       <div className="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 text-xs text-slate-600 dark:text-slate-400">
         <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200 text-sm">
           <Info className="w-4 h-4 text-fox-500" />
-          <span>下载建议说明</span>
+          <span>下载与直播说明</span>
         </div>
         <ul className="list-disc list-inside space-y-1 leading-relaxed">
           <li>M3U8 格式为切片视频流，建议使用 NDM、IDM、或 M3U8 Downloader 工具进行抓取合并下载。</li>
-          <li>部分源站开启了防盗链，若在线播放卡顿或无法下载，可尝试在设置中切换代理或使用桌面端下载软件。</li>
+          <li>卫星电视台直播源为 HLS 流媒体，直接点击上方卫视卡片即可在下方播放窗口观看或复制下载直链。</li>
         </ul>
       </div>
     </div>

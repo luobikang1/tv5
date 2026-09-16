@@ -5,7 +5,7 @@ import { VideoCard } from '../components/VideoCard';
 import { Flame, Film, Tv, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { apiList, showAdultColumn } = useApp();
+  const { apiList, showAdultColumn, loginBgImage } = useApp();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [adultVideos, setAdultVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +43,9 @@ export const HomePage: React.FC = () => {
     <div className="space-y-8 pb-16">
       <section className="relative rounded-3xl overflow-hidden min-h-[320px] sm:min-h-[380px] p-8 sm:p-12 text-white shadow-2xl flex items-end">
         <img
-          src="/hero-bg.webp"
+          src={loginBgImage || '/hero-bg.webp'}
           alt="Hero Background"
-          className="absolute inset-0 w-full h-full object-cover object-top"
+          className="absolute inset-0 w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
         <div className="relative z-10 max-w-2xl space-y-4">
@@ -57,7 +57,7 @@ export const HomePage: React.FC = () => {
             高码率低延迟 · 畅享极速影视
           </h1>
           <p className="text-slate-200 text-sm sm:text-base leading-relaxed drop-shadow">
-            内置 20+ 优质源站接口，多码率自适应切换（低至 360P），支持 Cloudflare / Vercel / Docker 多端一键部署。
+            内置 20+ 优质源站接口，多码率自适应切换（低至 360P / 240P），支持 Cloudflare / Vercel / Docker 多端一键部署。
           </p>
         </div>
       </section>
