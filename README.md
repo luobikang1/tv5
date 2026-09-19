@@ -13,13 +13,13 @@
 - ⚡ **卡顿与缓冲解决三大技术**：
   1. **Nginx 代理缓存 / Cloudflare Worker 代理**：支持服务器端与 Worker 代理反查，解除跨域限制（CORS）与源站响应慢问题。
   2. **预加载 + 预连接**：在 HTML/HLS 标签加入 `preconnect` 及 `dns-prefetch`，提前建连源站域名。
-  3. **多码率自适应切换 (低至 360P)**：内置低至 360P 流畅码率选项，弱网环境自动切至低码率，实现秒播无卡顿。
+  3. **多码率自适应切换 (低至 360P)**：默认 360P 流畅码率选项，弱网环境自动切至低码率，实现秒播无卡顿。
 - 🌐 **二十条互联网可用 API + 成人视频专栏**：默认自动配置 20 条优质 CMS 接口，支持全站集合搜索，且支持在设置中自动加载互联网成人影片 API 专栏。
 - 🎨 **白天/夜间模式切换**：支持一键切换深色/浅色主题。
-- 🕒 **播放历史与清除功能**：自动记录播放进度，支持单条记录删除及一键清空历史。
+- 🕒 **播放历史与删除功能**：自动记录播放进度，支持单条记录删除及一键清空历史。
 - ⏬ **下载与内嵌播放**：播放页提供集数直链复制与下载页功能，下载页可直接粘贴 M3U8 在线测试与预览播放。
 - ☁️ **Cloudflare D1 数据库同步与注册认证**：支持调用 Cloudflare D1 数据库实时注册、登录与同步用户设置及观看历史。
-- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理 routing，彻底解决海报加载失败或破损问题。
+- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理，彻底解决海报加载失败或破损问题。
 
 ---
 
@@ -41,21 +41,27 @@
 
 ---
 
-## 🚀 部署指南
+## 🚀 部署指南 (支持拉取部署与上传部署)
 
 ### 1. Cloudflare Pages 部署 (推荐，零成本)
 
-#### 方案 A：GitHub 自动关联部署（最简便）
-1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
+#### 方案 A：拉取部署（Git 关联）
+1. 将本项目代码 Fork 或 Clone 到你的 **GitHub** 仓库。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
 3. 选择 `whitefox5` 仓库，配置构建参数：
    - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
 4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与注册**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
+
+#### 方案 B：上传部署（Direct Upload）
+1. 本地执行 `npm run build` 生成 `dist` 文件夹，或将源码打包 zip。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages** -> **Upload assets**。
+3. 直接拖拽上传 `dist` 目录或通过 Wrangler CLI (`npx wrangler pages deploy dist`) 上传发布。
+
+#### D1 数据库绑定与离线/在线同步：
+- 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
+- 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
 
 ---
 
