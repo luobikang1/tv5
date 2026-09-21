@@ -41,9 +41,14 @@ interface AppContextType {
   registerUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 
-  // Theme
+  // Theme & Homepage Background Customization
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  customBgColor: string;
+  setCustomBgColor: (color: string) => void;
+  customBgImage: string;
+  setCustomBgImage: (image: string) => void;
+  clearCustomBg: () => void;
 
   // Resolution
   defaultResolution: VideoQuality;
@@ -87,6 +92,8 @@ const STORAGE_KEYS = {
   PASSWORD: 'wf_password',
   USER: 'wf_logged_user',
   THEME: 'wf_theme',
+  BG_COLOR: 'wf_custom_bg_color',
+  BG_IMAGE: 'wf_custom_bg_image',
   RESOLUTION: 'wf_resolution',
   APIS: 'wf_custom_apis',
   ADULT: 'wf_show_adult',
@@ -118,6 +125,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.THEME);
     return saved ? saved === 'dark' : true;
+  });
+
+  // Homepage Custom Background Color & Image
+  const [customBgColor, setCustomBgColorState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.BG_COLOR) || '';
+  });
+
+  const [customBgImage, setCustomBgImageState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.BG_IMAGE) || '';
   });
 
   // Resolution State (Default 360p)
@@ -181,12 +197,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setDefaultResolutionState(data.resolution);
             localStorage.setItem(STORAGE_KEYS.RESOLUTION, data.resolution);
           }
+          if (data.bgColor) {
+            setCustomBgColorState(data.bgColor);
+            localStorage.setItem(STORAGE_KEYS.BG_COLOR, data.bgColor);
+          }
+          if (data.bgImage) {
+            setCustomBgImageState(data.bgImage);
+            localStorage.setItem(STORAGE_KEYS.BG_IMAGE, data.bgImage);
+          }
         }
       });
     }
   }, [d1Enabled, currentUser]);
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
+
+  const setCustomBgColor = (color: string) => {
+    setCustomBgColorState(color);
+    if (color) {
+      localStorage.setItem(STORAGE_KEYS.BG_COLOR, color);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.BG_COLOR);
+    }
+  };
+
+  const setCustomBgImage = (image: string) => {
+    setCustomBgImageState(image);
+    if (image) {
+      localStorage.setItem(STORAGE_KEYS.BG_IMAGE, image);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.BG_IMAGE);
+    }
+  };
+
+  const clearCustomBg = () => {
+    setCustomBgColorState('');
+    setCustomBgImageState('');
+    localStorage.removeItem(STORAGE_KEYS.BG_COLOR);
+    localStorage.removeItem(STORAGE_KEYS.BG_IMAGE);
+  };
 
   const verifyPassword = (inputPass: string): boolean => {
     if (!currentPassword || inputPass === currentPassword) {
@@ -306,7 +355,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Add History - Capacity expanded to 350 items to safely support 200+
   const addHistory = (item: Omit<WatchHistoryItem, 'updated_at'>) => {
     setHistoryList((prev) => {
       const filtered = prev.filter((h) => h.id !== item.id);
@@ -315,7 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (d1Enabled) {
         const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-        syncToD1(syncKey, { history: updated, favorites: favoritesList, resolution: defaultResolution });
+        syncToD1(syncKey, { history: updated, favorites: favoritesList, resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
       }
 
       return updated;
@@ -328,7 +376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
       if (d1Enabled) {
         const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-        syncToD1(syncKey, { history: updated, favorites: favoritesList, resolution: defaultResolution });
+        syncToD1(syncKey, { history: updated, favorites: favoritesList, resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
       }
       return updated;
     });
@@ -339,7 +387,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
     if (d1Enabled) {
       const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-      syncToD1(syncKey, { history: [], favorites: favoritesList, resolution: defaultResolution });
+      syncToD1(syncKey, { history: [], favorites: favoritesList, resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
     }
   };
 
@@ -352,7 +400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (d1Enabled) {
         const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-        syncToD1(syncKey, { history: historyList, favorites: updated, resolution: defaultResolution });
+        syncToD1(syncKey, { history: historyList, favorites: updated, resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
       }
 
       return updated;
@@ -366,7 +414,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (d1Enabled) {
         const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-        syncToD1(syncKey, { history: historyList, favorites: updated, resolution: defaultResolution });
+        syncToD1(syncKey, { history: historyList, favorites: updated, resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
       }
 
       return updated;
@@ -382,7 +430,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.FAVORITES);
     if (d1Enabled) {
       const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-      syncToD1(syncKey, { history: historyList, favorites: [], resolution: defaultResolution });
+      syncToD1(syncKey, { history: historyList, favorites: [], resolution: defaultResolution, bgColor: customBgColor, bgImage: customBgImage });
     }
   };
 
@@ -397,6 +445,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       history: historyList,
       favorites: favoritesList,
       resolution: defaultResolution,
+      bgColor: customBgColor,
+      bgImage: customBgImage,
     });
   };
 
@@ -407,6 +457,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
     setIsUnlocked(true);
     setIsDarkMode(true);
+    setCustomBgColorState('');
+    setCustomBgImageState('');
     setDefaultResolutionState('360');
     setApiList(DEFAULT_VIDEO_APIS);
     setShowAdultColumnState(false);
@@ -428,6 +480,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         isDarkMode,
         toggleDarkMode,
+        customBgColor,
+        setCustomBgColor,
+        customBgImage,
+        setCustomBgImage,
+        clearCustomBg,
         defaultResolution,
         setDefaultResolution,
         apiList,

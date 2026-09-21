@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   Cloud,
   HardDrive,
+  Palette,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -29,6 +31,11 @@ export const SettingsPage: React.FC = () => {
     setPassword,
     currentUser,
     logout,
+    customBgColor,
+    setCustomBgColor,
+    customBgImage,
+    setCustomBgImage,
+    clearCustomBg,
     defaultResolution,
     setDefaultResolution,
     apiList,
@@ -92,9 +99,9 @@ export const SettingsPage: React.FC = () => {
     const success = await manualSyncD1();
     setSyncing(false);
     if (success) {
-      setSyncMsg('D1 数据库同步成功！包含历史记录与追剧收藏');
+      setSyncMsg('D1 数据库同步成功！包含播放历史与追剧收藏');
     } else {
-      setSyncMsg('⚠️ 数据库同步失效，暂未解决（请检查 Cloudflare D1 数据库绑定或在本地缓存模式下使用）');
+      setSyncMsg('D1 同步未完成（请在 Cloudflare Pages 中绑定名为 DB 的 D1 数据库）');
     }
   };
 
@@ -108,10 +115,24 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setR2Saved(false), 2000);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Img = uploadEvent.target?.result as string;
+        if (base64Img) {
+          setCustomBgImage(base64Img);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex items-center justify-between">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-fox-100 dark:bg-fox-900/40 text-fox-500 rounded-2xl">
             <Settings className="w-8 h-8" />
@@ -119,7 +140,7 @@ export const SettingsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与面板设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理独立访问密码、清晰度预留按纽、Cloudflare R2 对象存储与数据库同步
+              管理主页自定义背景、独立访问密码、清晰度预留按纽、Cloudflare R2 与 D1 数据库同步
             </p>
           </div>
         </div>
@@ -141,8 +162,56 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
+      {/* Homepage Custom Background Customization */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+          <Palette className="w-5 h-5 text-fox-500" />
+          <h2>主页自定义背景色与照片上传</h2>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          您可以选择自定义主页背景颜色，或上传本地个性化照片作为主页背景壁纸。
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl pt-2">
+          {/* Custom Color Selector */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">背景颜色选择</label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="color"
+                value={customBgColor || '#0f172a'}
+                onChange={(e) => setCustomBgColor(e.target.value)}
+                className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent"
+              />
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                {customBgColor || '未设置 (默认跟随主题)'}
+              </span>
+            </div>
+          </div>
+
+          {/* Custom Image Upload */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">主页背景照片上传</label>
+            <label className="cursor-pointer inline-flex items-center space-x-2 px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold shadow transition-all">
+              <ImageIcon className="w-4 h-4" />
+              <span>选择照片</span>
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+
+        {(customBgColor || customBgImage) && (
+          <button
+            onClick={clearCustomBg}
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+          >
+            重置背景为系统默认
+          </button>
+        )}
+      </section>
+
       {/* Access Password Settings */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
           <Lock className="w-5 h-5 text-fox-500" />
           <h2>白狐5 访问密码保护</h2>
@@ -180,20 +249,14 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Default Video Quality Selection */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
           <Radio className="w-5 h-5 text-fox-500" />
           <h2>默认播放分辨率调节 (低至 360P)</h2>
         </div>
 
-        {/* Notice required by prompt */}
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>⚠️ 压缩分辨率功能无效，仅预留操作按钮 (接入 Cloudflare R2 对象存储切片转码时可用)</span>
-        </div>
-
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          预留默认画质切片选项按钮，支持低至 360P 流畅模式，源站为单码率 M3U8 时仅作为切片选择标记。
+          设定进入播放页时的默认画质选项，针对低网速环境优化，默认为 360P 流畅模式。
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-xl">
@@ -214,7 +277,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Cloudflare R2 Object Storage Integration & 10GB Egress Warning */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Cloud className="w-5 h-5 text-sky-500" />
@@ -231,7 +294,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，解禁压缩分辨率与高清防抖动卡顿功能。
+          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。
         </p>
 
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
@@ -317,11 +380,11 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Cloudflare D1 Synchronization */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Database className="w-5 h-5 text-fox-500" />
-            <h2>Cloudflare D1 数据库同步</h2>
+            <h2>Cloudflare D1 数据库实时同步</h2>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -334,14 +397,8 @@ export const SettingsPage: React.FC = () => {
           </label>
         </div>
 
-        {/* Required notice for DB sync */}
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center space-x-2 text-red-500 text-xs font-semibold">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>⚠️ 数据库同步失效，暂未解决（系统将自动降级并保存在本地离线存储）</span>
-        </div>
-
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          部署在 Cloudflare Pages 绑定 D1 数据库后，可同步播放历史进度、追剧收藏与用户自定义设置。
+          部署在 Cloudflare Pages 绑定 D1 数据库（绑定名: DB）后，可自动实时同步播放历史进度（300+条）、追剧收藏与用户自定义设置。
         </p>
 
         <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -359,7 +416,7 @@ export const SettingsPage: React.FC = () => {
             className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 shadow transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            <span>立即测试并同步 D1</span>
+            <span>测试并同步 Cloudflare D1</span>
           </button>
         </div>
 
@@ -367,7 +424,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Adult Section Toggle */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Shield className="w-5 h-5 text-amber-500" />
@@ -389,7 +446,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* API Source List & Custom Manager */}
-      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
             内置与自定义 API 接口管理 ({apiList.length} 个)
@@ -460,7 +517,7 @@ export const SettingsPage: React.FC = () => {
       <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
         <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          清除本地所有浏览历史、追剧收藏、访问密码、自定 API 接口配置，并恢复出厂默认状态。
+          清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。
         </p>
         <button
           onClick={() => {

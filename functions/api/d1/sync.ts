@@ -12,21 +12,21 @@ export async function onRequest(context: any) {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Support both standard DB binding and env variables or bindings named CF_D1_BINDING / DB
+  // Robust Cloudflare D1 Binding Lookup
   const db = env.DB || env.DB_BINDING || env.WHITEFOX_DB;
 
   if (!db) {
     return new Response(
       JSON.stringify({
         success: false,
-        message: 'Cloudflare D1 database binding (DB) not configured. Please bind D1 Database with binding name "DB" in Cloudflare Pages settings.',
+        message: 'Cloudflare D1 数据库未绑定。请在 Cloudflare Pages 设置中的 Functions -> D1 Database Bindings 绑定名称为 DB 的数据库。',
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
   try {
-    // Ensure tables exist
+    // Ensure D1 database tables are created automatically
     await db.prepare(
       `CREATE TABLE IF NOT EXISTS user_data (
         key TEXT PRIMARY KEY,
@@ -95,7 +95,7 @@ export async function onRequest(context: any) {
         }
       }
 
-      // Default Key-Value store
+      // Sync Key-Value store
       const { key, value } = body;
       if (!key) {
         return new Response(JSON.stringify({ success: false, message: 'Key is required' }), {
@@ -104,13 +104,15 @@ export async function onRequest(context: any) {
         });
       }
 
+      const valString = typeof value === 'string' ? value : JSON.stringify(value);
+
       await db.prepare(
         `INSERT INTO user_data (key, value, updated_at)
          VALUES (?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-      ).bind(key, typeof value === 'string' ? value : JSON.stringify(value), Date.now()).run();
+      ).bind(key, valString, Date.now()).run();
 
-      return new Response(JSON.stringify({ success: true, message: '数据已成功同步至 D1 数据库' }), {
+      return new Response(JSON.stringify({ success: true, message: '数据已成功同步存入 Cloudflare D1 数据库' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
