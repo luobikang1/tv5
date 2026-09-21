@@ -8,6 +8,7 @@ import { SearchPage } from './pages/SearchPage';
 import { PlayerPage } from './pages/PlayerPage';
 import { DownloadPage } from './pages/DownloadPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { FavoritesPage } from './pages/FavoritesPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 const ProtectedLayout: React.FC = () => {
@@ -23,6 +24,7 @@ const ProtectedLayout: React.FC = () => {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/player/:sourceId/:vodId" element={<PlayerPage />} />
             <Route path="/download" element={<DownloadPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

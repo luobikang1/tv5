@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { VideoItem } from '../services/cmsApi';
 import { DEFAULT_POSTER, getProxyPosterUrl } from '../services/posterProxy';
-import { Play, Download } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { Play, Download, Heart } from 'lucide-react';
 
 interface VideoCardProps {
   video: VideoItem;
@@ -10,6 +11,11 @@ interface VideoCardProps {
 
 export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
   const navigate = useNavigate();
+  const { isFavorite, addFavorite, removeFavorite } = useApp();
+
+  const vidKey = `${video.source_id}-${video.vod_id}`;
+  const favorited = isFavorite(vidKey);
+
   const [imgSrc, setImgSrc] = useState<string>(() => getProxyPosterUrl(video.vod_pic));
   const [hasError, setHasError] = useState(false);
 
@@ -17,6 +23,25 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
     if (!hasError) {
       setHasError(true);
       setImgSrc(DEFAULT_POSTER);
+    }
+  };
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (favorited) {
+      removeFavorite(vidKey);
+    } else {
+      addFavorite({
+        id: vidKey,
+        vod_name: video.vod_name,
+        vod_pic: video.vod_pic,
+        source_id: video.source_id || '',
+        source_name: video.source_name || '',
+        type_name: video.type_name,
+        vod_year: video.vod_year,
+        vod_remarks: video.vod_remarks,
+      });
     }
   };
 
@@ -36,10 +61,20 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-        <div className="absolute inset-0 flex items-center justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="w-12 h-12 rounded-full bg-fox-500 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-            <Play className="w-6 h-6 fill-current ml-0.5" />
+        <div className="absolute inset-0 flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="w-11 h-11 rounded-full bg-fox-500 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+            <Play className="w-5 h-5 fill-current ml-0.5" />
           </div>
+
+          <button
+            onClick={toggleFav}
+            title={favorited ? '取消收藏' : '收藏影片'}
+            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700 ${
+              favorited ? 'bg-red-500 text-white' : 'bg-slate-900/90 text-white hover:bg-red-500'
+            }`}
+          >
+            <Heart className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
+          </button>
 
           <button
             onClick={(e) => {
@@ -48,9 +83,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
               navigate('/download', { state: { video } });
             }}
             title="下载该视频"
-            className="w-11 h-11 rounded-full bg-slate-900/90 text-white hover:bg-emerald-600 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700"
+            className="w-10 h-10 rounded-full bg-slate-900/90 text-white hover:bg-emerald-600 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700"
           >
-            <Download className="w-5 h-5" />
+            <Download className="w-4 h-4" />
           </button>
         </div>
 

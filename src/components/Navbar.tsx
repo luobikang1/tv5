@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Sun, Moon, Search, History, Download, Settings, Lock, LogOut, User } from 'lucide-react';
+import { Sun, Moon, Search, History, Download, Settings, Lock, LogOut, User, Heart } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { isDarkMode, toggleDarkMode, currentPassword, currentUser, logout } = useApp();
@@ -55,6 +55,17 @@ export const Navbar: React.FC = () => {
             >
               <Search className="w-4 h-4" />
               <span>聚合搜索</span>
+            </Link>
+            <Link
+              to="/favorites"
+              className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center space-x-1.5 ${
+                isActive('/favorites')
+                  ? 'bg-fox-500 text-white font-semibold shadow-md shadow-fox-500/20'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Heart className="w-4 h-4 text-red-400 fill-current" />
+              <span>追剧收藏</span>
             </Link>
             <Link
               to="/history"
@@ -146,7 +157,16 @@ export const Navbar: React.FC = () => {
           }`}
         >
           <Search className="w-5 h-5" />
-          <span className="text-xs mt-1">聚合搜索</span>
+          <span className="text-xs mt-1">搜索</span>
+        </Link>
+        <Link
+          to="/favorites"
+          className={`flex flex-col items-center p-1.5 ${
+            isActive('/favorites') ? 'text-fox-500 font-bold' : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <Heart className="w-5 h-5 text-red-500 fill-current" />
+          <span className="text-xs mt-1">收藏</span>
         </Link>
         <Link
           to="/history"
@@ -156,15 +176,6 @@ export const Navbar: React.FC = () => {
         >
           <History className="w-5 h-5" />
           <span className="text-xs mt-1">历史</span>
-        </Link>
-        <Link
-          to="/download"
-          className={`flex flex-col items-center p-1.5 ${
-            isActive('/download') ? 'text-fox-500 font-bold' : 'text-slate-500 dark:text-slate-400'
-          }`}
-        >
-          <Download className="w-5 h-5" />
-          <span className="text-xs mt-1">下载</span>
         </Link>
         <Link
           to="/settings"

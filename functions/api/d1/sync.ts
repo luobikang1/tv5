@@ -12,16 +12,22 @@ export async function onRequest(context: any) {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (!env.DB) {
+  // Support both standard DB binding and env variables or bindings named CF_D1_BINDING / DB
+  const db = env.DB || env.DB_BINDING || env.WHITEFOX_DB;
+
+  if (!db) {
     return new Response(
-      JSON.stringify({ success: false, message: 'Cloudflare D1 database binding (DB) not configured' }),
+      JSON.stringify({
+        success: false,
+        message: 'Cloudflare D1 database binding (DB) not configured. Please bind D1 Database with binding name "DB" in Cloudflare Pages settings.',
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
   try {
     // Ensure tables exist
-    await env.DB.prepare(
+    await db.prepare(
       `CREATE TABLE IF NOT EXISTS user_data (
         key TEXT PRIMARY KEY,
         value TEXT,
@@ -29,7 +35,7 @@ export async function onRequest(context: any) {
       )`
     ).run();
 
-    await env.DB.prepare(
+    await db.prepare(
       `CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
         password TEXT NOT NULL,
@@ -53,7 +59,7 @@ export async function onRequest(context: any) {
           });
         }
 
-        const existing = await env.DB.prepare('SELECT username FROM users WHERE username = ?').bind(username).first();
+        const existing = await db.prepare('SELECT username FROM users WHERE username = ?').bind(username).first();
         if (existing) {
           return new Response(JSON.stringify({ success: false, message: '该用户名已被注册' }), {
             status: 400,
@@ -61,7 +67,7 @@ export async function onRequest(context: any) {
           });
         }
 
-        await env.DB.prepare('INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)')
+        await db.prepare('INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)')
           .bind(username, password, Date.now())
           .run();
 
@@ -73,7 +79,7 @@ export async function onRequest(context: any) {
       // User Login endpoint
       if (action === 'login') {
         const { username, password } = body;
-        const user = await env.DB.prepare('SELECT * FROM users WHERE username = ? AND password = ?')
+        const user = await db.prepare('SELECT * FROM users WHERE username = ? AND password = ?')
           .bind(username, password)
           .first();
 
@@ -98,13 +104,13 @@ export async function onRequest(context: any) {
         });
       }
 
-      await env.DB.prepare(
+      await db.prepare(
         `INSERT INTO user_data (key, value, updated_at)
          VALUES (?, ?, ?)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
       ).bind(key, typeof value === 'string' ? value : JSON.stringify(value), Date.now()).run();
 
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({ success: true, message: '数据已成功同步至 D1 数据库' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -113,13 +119,13 @@ export async function onRequest(context: any) {
       const key = url.searchParams.get('key');
 
       if (!key) {
-        const { results } = await env.DB.prepare('SELECT * FROM user_data').all();
+        const { results } = await db.prepare('SELECT * FROM user_data').all();
         return new Response(JSON.stringify({ success: true, data: results }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const row = await env.DB.prepare('SELECT value FROM user_data WHERE key = ?').bind(key).first();
+      const row = await db.prepare('SELECT value FROM user_data WHERE key = ?').bind(key).first();
       return new Response(JSON.stringify({ success: true, value: row ? row.value : null }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

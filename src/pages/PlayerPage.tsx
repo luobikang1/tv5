@@ -3,12 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { fetchVodDetail, parsePlayUrls, VideoItem, PlaySource, Episode } from '../services/cmsApi';
 import { HlsPlayer } from '../components/HlsPlayer';
-import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy } from 'lucide-react';
+import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy, Heart } from 'lucide-react';
 
 export const PlayerPage: React.FC = () => {
   const { sourceId, vodId } = useParams<{ sourceId: string; vodId: string }>();
   const navigate = useNavigate();
-  const { apiList, addHistory } = useApp();
+  const { apiList, addHistory, isFavorite, addFavorite, removeFavorite } = useApp();
 
   const [video, setVideo] = useState<VideoItem | null>(null);
   const [playSources, setPlaySources] = useState<PlaySource[]>([]);
@@ -16,6 +16,9 @@ export const PlayerPage: React.FC = () => {
   const [activeEpisodeIndex, setActiveEpisodeIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  const vidKey = `${sourceId}-${vodId}`;
+  const favorited = isFavorite(vidKey);
 
   useEffect(() => {
     const loadVideo = async () => {
@@ -87,6 +90,24 @@ export const PlayerPage: React.FC = () => {
     }
   };
 
+  const toggleFav = () => {
+    if (!video) return;
+    if (favorited) {
+      removeFavorite(vidKey);
+    } else {
+      addFavorite({
+        id: vidKey,
+        vod_name: video.vod_name,
+        vod_pic: video.vod_pic,
+        source_id: sourceId || '',
+        source_name: video.source_name || '',
+        type_name: video.type_name,
+        vod_year: video.vod_year,
+        vod_remarks: video.vod_remarks,
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -122,6 +143,18 @@ export const PlayerPage: React.FC = () => {
         </button>
 
         <div className="flex items-center space-x-2">
+          <button
+            onClick={toggleFav}
+            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 transition-colors shadow-sm border ${
+              favorited
+                ? 'bg-red-500 text-white border-red-500'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:text-red-500'
+            }`}
+          >
+            <Heart className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
+            <span>{favorited ? '已追剧收藏' : '加入追剧'}</span>
+          </button>
+
           <Link
             to="/download"
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium flex items-center space-x-2 transition-colors shadow-sm"
