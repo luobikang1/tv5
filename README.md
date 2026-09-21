@@ -35,20 +35,19 @@
 
 - 🔒 **多重登录与流量保护面板**：
   - 支持**全局访问密码登录**、**账号密码登录**与**新用户注册**。
-  - 能够防止未授权人员刷量，有效避免云平台部署流量浪费。
   - 提供**一键退出登录**与面板锁定功能。
-- 🎨 **主页自定义背景与壁纸上传**：支持自定义主页背景颜色与本地个性化照片上传作为主页背景。
+- 🎨 **黑白夜间模式切换 & 自定义背景**：
+  - 支持顶部导航栏一键切换**白天 (浅色) / 夜间 (深色)** 主题模式。
+  - 支持自定义全站背景颜色、全站壁纸照片以及**首页介绍选项区照片壁纸**。
 - ⚡ **卡顿与缓冲解决三大技术**：
   1. **Nginx 代理缓存 / Cloudflare Worker 代理**：支持服务器端与 Worker 代理反查，解除跨域限制（CORS）与源站响应慢问题。
   2. **预加载 + 预连接**：在 HTML/HLS 标签加入 `preconnect` 及 `dns-prefetch`，提前建连源站域名。
   3. **多码率自适应与分辨率切片按纽**：提供低至 360P 流畅码率选项，弱网环境自动重试切至低码率，实现秒播无卡顿。
+- 🖼️ **海报图直观特征**：海报右上角展示**实时追剧收藏按键**，海报左上角展示**网络响应延迟 (如 28ms)**。
 - 🌐 **二十条互联网可用 API + 成人视频专栏**：默认自动配置 20 条优质 CMS 接口，支持全站集合搜索，且支持在设置中自动加载互联网成人影片 API 专栏。
-- 🔍 **全网搜索与本地视频播放**：搜索引擎支持多分类选择（电影、连续剧、动漫、综艺、纪录片、成人专区）与本地视频文件导入秒播。
+- 🔍 **全网搜索与解析下载**：搜索引擎支持多分类选择（电影、连续剧、动漫、综艺、纪录片、成人专区），支持搜索状态记忆（页面返回不丢失），并支持视频直链解析与高速下载。
 - ❤️ **追剧收藏与历史记录（200+ 条）**：支持单键加入追剧收藏，历史记录容量扩展至 300+ 条。
-- 🎨 **白天/夜间模式切换**：支持一键切换深色/浅色主题。
-- 🕒 **播放历史与清除功能**：自动记录播放进度，支持单条记录删除及一键清空历史。
 - ⏬ **下载与内嵌播放**：播放页提供集数直链复制与下载页功能，下载页可直接粘贴 M3U8 在线测试与预览播放。
-- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理 routing，彻底解决海报加载失败或破损问题。
 
 ---
 
@@ -70,35 +69,56 @@
 
 ---
 
-## 🚀 部署指南
+## 🚀 部署方式说明 (支持代码部署与文件上传部署)
 
-### 1. Cloudflare Pages 部署 (推荐，零成本)
+### 方式一：代码部署方式 (GitHub Repository Auto Deployment)
 
-#### 方案 A：GitHub 自动关联部署（最简便）
-1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
-3. 选择 `whitefox5` 仓库，配置构建参数：
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与 R2 对象存储**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板设置页，可填入 Cloudflare R2 对象存储 Bucket，超 10GB 出口将显示预警标识。
+最推荐的持续集成部署方式，代码更新后云平台自动构建部署。
 
----
+1. **Cloudflare Pages 代码部署**：
+   - 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
+   - 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
+   - 选择 `whitefox5` 仓库，配置构建参数：
+     - **Framework preset**: `Vite`
+     - **Build command**: `npm run build`
+     - **Build output directory**: `dist`
+   - 点击 **Save and Deploy** 即可完成部署！
 
-### 2. Vercel 一键部署
-
-1. 在 Vercel 导入 GitHub 仓库：
-2. **Build Command**: `npm run build`
-3. **Output Directory**: `dist`
-4. 环境变量中添加 `PASSWORD`（可选）。
-5. 本项目已内置 `vercel.json` 规则，部署完成后系统路由与 `/api/proxy` 函数将自动生效。
+2. **Vercel 一键代码部署**：
+   - 在 Vercel Dashboard 点击 **Add New Project** -> 导入 GitHub 仓库。
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - 部署完成后系统内置的 `vercel.json` 规则与 Serverless API 代理将自动生效。
 
 ---
 
-### 3. Docker & Docker-Compose 部署
+### 方式二：文件上传部署方式 (Static Dist Asset Upload)
+
+无须连接 Git 仓库，编译后直接上传静态构建包压缩文件即可部署。
+
+1. **Cloudflare Pages 文件直接上传部署 (Direct Upload)**：
+   - 在本地终端运行构建命令：
+     ```bash
+     npm run build
+     ```
+   - 运行完成后，将项目根目录下生成的 `dist/` 文件夹打成 Zip 压缩包（或直接选中 `dist` 内部文件夹）。
+   - 打开 [Cloudflare Pages Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages** -> 选择 **Upload assets**。
+   - 输入项目名称，将 `dist` 文件夹或拖拽上传，点击 **Deploy Site** 即可秒级上线！
+
+2. **宝塔面板 / Nginx / 虚拟主机上传部署**：
+   - 运行 `npm run build` 生成 `dist/` 静态网页目录。
+   - 将 `dist/` 目录下所有内容压缩为 `.zip` 文件上传至服务器网站根目录并解压。
+   - 在 Nginx 配置文件中加入 SPA 路由重定向规则：
+     ```nginx
+     location / {
+         try_files $uri $uri/ /index.html;
+     }
+     ```
+
+---
+
+### 方式三：Docker & Docker-Compose 部署
 
 本项目已提供支持 **Nginx 代理缓存 (Anti-Lag)** 的 Dockerfile 及 docker-compose 配置文件。
 

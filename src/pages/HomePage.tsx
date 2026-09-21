@@ -5,7 +5,7 @@ import { VideoCard } from '../components/VideoCard';
 import { Flame, Film, Tv, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { apiList, showAdultColumn } = useApp();
+  const { apiList, showAdultColumn, customHeroBgImage } = useApp();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [adultVideos, setAdultVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,9 +37,21 @@ export const HomePage: React.FC = () => {
     loadData();
   }, [activeApiIndex, showAdultColumn, apiList]);
 
+  const heroStyle: React.CSSProperties = customHeroBgImage
+    ? {
+        backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.4)), url(${customHeroBgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {};
+
   return (
     <div className="space-y-8 pb-16">
-      <section className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-fox-600 via-fox-500 to-amber-600 p-8 sm:p-12 text-white shadow-2xl">
+      {/* Hero Intro Banner with Custom Photo Background support */}
+      <section
+        style={heroStyle}
+        className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-fox-600 via-fox-500 to-amber-600 p-8 sm:p-12 text-white shadow-2xl transition-all duration-300"
+      >
         <div className="relative z-10 max-w-2xl space-y-4">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
             <Sparkles className="w-4 h-4 text-amber-300" />

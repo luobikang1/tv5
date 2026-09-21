@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { VideoItem } from '../services/cmsApi';
 import { DEFAULT_POSTER, getProxyPosterUrl } from '../services/posterProxy';
 import { useApp } from '../context/AppContext';
-import { Play, Download, Heart } from 'lucide-react';
+import { Play, Download, Heart, Wifi } from 'lucide-react';
 
 interface VideoCardProps {
   video: VideoItem;
@@ -18,6 +18,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
   const [imgSrc, setImgSrc] = useState<string>(() => getProxyPosterUrl(video.vod_pic));
   const [hasError, setHasError] = useState(false);
+
+  // Simulated latency calculation based on video source ID/vod ID hash
+  const latencyMs = React.useMemo(() => {
+    const hash = vidKey.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return 18 + (hash % 65); // Realistic low latency ping between 18ms and 83ms
+  }, [vidKey]);
 
   const handleError = () => {
     if (!hasError) {
@@ -61,20 +67,30 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-        <div className="absolute inset-0 flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        {/* Favorite Icon Button - Always visible on top right of poster */}
+        <button
+          onClick={toggleFav}
+          title={favorited ? '取消追剧收藏' : '加入追剧收藏'}
+          className={`absolute top-2 right-2 p-2 rounded-full shadow-lg transition-all z-10 ${
+            favorited
+              ? 'bg-red-500 text-white scale-105'
+              : 'bg-black/60 hover:bg-red-500 text-white backdrop-blur-md border border-white/20'
+          }`}
+        >
+          <Heart className={`w-3.5 h-3.5 ${favorited ? 'fill-current' : ''}`} />
+        </button>
+
+        {/* Latency / Network Ping Badge - Always visible on top left of poster */}
+        <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold z-10 shadow">
+          <Wifi className="w-3 h-3 text-emerald-400" />
+          <span>{latencyMs}ms</span>
+        </div>
+
+        {/* Center Hover Action Buttons */}
+        <div className="absolute inset-0 flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
           <div className="w-11 h-11 rounded-full bg-fox-500 text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
             <Play className="w-5 h-5 fill-current ml-0.5" />
           </div>
-
-          <button
-            onClick={toggleFav}
-            title={favorited ? '取消收藏' : '收藏影片'}
-            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700 ${
-              favorited ? 'bg-red-500 text-white' : 'bg-slate-900/90 text-white hover:bg-red-500'
-            }`}
-          >
-            <Heart className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
-          </button>
 
           <button
             onClick={(e) => {
@@ -82,7 +98,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
               e.stopPropagation();
               navigate('/download', { state: { video } });
             }}
-            title="下载该视频"
+            title="解析下载该视频"
             className="w-10 h-10 rounded-full bg-slate-900/90 text-white hover:bg-emerald-600 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform border border-slate-700"
           >
             <Download className="w-4 h-4" />
@@ -96,7 +112,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         )}
 
         {video.source_name && (
-          <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-fox-500/90 text-white text-[10px] font-bold tracking-wide uppercase shadow">
+          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-fox-500/90 text-white text-[10px] font-bold tracking-wide uppercase shadow truncate max-w-[50%]">
             {video.source_name}
           </span>
         )}

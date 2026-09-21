@@ -23,6 +23,7 @@ import {
   HardDrive,
   Palette,
   Image as ImageIcon,
+  Sparkles,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -35,6 +36,8 @@ export const SettingsPage: React.FC = () => {
     setCustomBgColor,
     customBgImage,
     setCustomBgImage,
+    customHeroBgImage,
+    setCustomHeroBgImage,
     clearCustomBg,
     defaultResolution,
     setDefaultResolution,
@@ -115,7 +118,7 @@ export const SettingsPage: React.FC = () => {
     setTimeout(() => setR2Saved(false), 2000);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGlobalBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -123,6 +126,20 @@ export const SettingsPage: React.FC = () => {
         const base64Img = uploadEvent.target?.result as string;
         if (base64Img) {
           setCustomBgImage(base64Img);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleHeroBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Img = uploadEvent.target?.result as string;
+        if (base64Img) {
+          setCustomHeroBgImage(base64Img);
         }
       };
       reader.readAsDataURL(file);
@@ -140,7 +157,7 @@ export const SettingsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与面板设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理主页自定义背景、独立访问密码、清晰度预留按纽、Cloudflare R2 与 D1 数据库同步
+              管理主页背景、首页介绍区背景、退出登录、Cloudflare R2 与 D1 数据库同步
             </p>
           </div>
         </div>
@@ -162,20 +179,20 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Homepage Custom Background Customization */}
+      {/* Homepage & Hero Banner Background Customization */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
           <Palette className="w-5 h-5 text-fox-500" />
-          <h2>主页自定义背景色与照片上传</h2>
+          <h2>背景颜色与首页介绍选项区照片壁纸自定义</h2>
         </div>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          您可以选择自定义主页背景颜色，或上传本地个性化照片作为主页背景壁纸。
+          您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-2">
           {/* Custom Color Selector */}
           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">背景颜色选择</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全局背景颜色</label>
             <div className="flex items-center space-x-3">
               <input
                 type="color"
@@ -183,44 +200,65 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => setCustomBgColor(e.target.value)}
                 className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent"
               />
-              <span className="text-xs font-mono text-slate-600 dark:text-slate-400">
-                {customBgColor || '未设置 (默认跟随主题)'}
+              <span className="text-xs font-mono text-slate-600 dark:text-slate-400 truncate">
+                {customBgColor || '默认样式'}
               </span>
             </div>
           </div>
 
-          {/* Custom Image Upload */}
+          {/* Custom Full-page Image Upload */}
           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">主页背景照片上传</label>
-            <label className="cursor-pointer inline-flex items-center space-x-2 px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold shadow transition-all">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全站背景照片</label>
+            <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold shadow transition-all">
               <ImageIcon className="w-4 h-4" />
-              <span>选择照片</span>
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              <span>上传全站照片</span>
+              <input type="file" accept="image/*" onChange={handleGlobalBgImageUpload} className="hidden" />
+            </label>
+          </div>
+
+          {/* Custom Hero Banner Photo Upload */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">首页介绍区照片</label>
+            <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+              <Sparkles className="w-4 h-4" />
+              <span>上传介绍区照片</span>
+              <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
             </label>
           </div>
         </div>
 
-        {(customBgColor || customBgImage) && (
+        {(customBgColor || customBgImage || customHeroBgImage) && (
           <button
             onClick={clearCustomBg}
             className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
           >
-            重置背景为系统默认
+            重置所有背景为系统默认
           </button>
         )}
       </section>
 
-      {/* Access Password Settings */}
+      {/* Access Password & Account Management */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-          <Lock className="w-5 h-5 text-fox-500" />
-          <h2>白狐5 访问密码保护</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Lock className="w-5 h-5 text-fox-500" />
+            <h2>白狐5 密码保护与账号控制</h2>
+          </div>
+
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>退出当前账号 / 锁定</span>
+          </button>
         </div>
+
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          设置密码后，访问网站时需先输入密码解锁才能进入界面。留空保存即取消密码保护。
+          设置密码后，访问网站时需先输入密码解锁才能进入界面。留空保存即取消密码保护。点击“退出当前账号”可登出系统。
         </p>
 
-        <form onSubmit={handleSavePassword} className="space-y-4 max-w-md">
+        <form onSubmit={handleSavePassword} className="space-y-4 max-w-md pt-1">
           <div className="relative">
             <input
               type={showPass ? 'text' : 'password'}
