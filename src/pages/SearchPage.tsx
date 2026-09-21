@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { searchAggregated, VideoItem } from '../services/cmsApi';
+import { CmsApiSource } from '../services/defaultApis';
 import { VideoCard } from '../components/VideoCard';
-import { HlsPlayer } from '../components/HlsPlayer';
 import {
   Search,
   Loader2,
   Film,
-  Upload,
-  Play,
+  Download,
   Filter,
-  Tv,
-  Smile,
+  Globe,
+  Plus,
+  Check,
   Sparkles,
-  FileVideo,
-  X,
 } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
@@ -27,17 +26,39 @@ const CATEGORY_OPTIONS = [
   { id: 'adult', name: '成人专区' },
 ];
 
-export const SearchPage: React.FC = () => {
-  const { apiList, showAdultColumn } = useApp();
-  const [keyword, setKeyword] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [results, setResults] = useState<VideoItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+// Presets for online API discovery
+const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
+  { id: 'disc_ff', name: '非凡极速资源 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_bf', name: '暴风超清资源 API', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_lz', name: '量子全高画质 API', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_ikun', name: 'iKun 极速无阻 API', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_sn', name: '神马云加速 API', url: 'https://img.smdy.cc/api.php/provide/vod', type: 'video' },
+];
 
-  // Local Video File State
-  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
-  const [localVideoName, setLocalVideoName] = useState<string | null>(null);
+export const SearchPage: React.FC = () => {
+  const { apiList, addCustomApi, showAdultColumn } = useApp();
+  const navigate = useNavigate();
+
+  // Restore state from sessionStorage to prevent losing results after returning from preview/player
+  const [keyword, setKeyword] = useState(() => sessionStorage.getItem('wf_search_kw') || '');
+  const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem('wf_search_cat') || 'all');
+  const [results, setResults] = useState<VideoItem[]>(() => {
+    const saved = sessionStorage.getItem('wf_search_res');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [hasSearched, setHasSearched] = useState(() => sessionStorage.getItem('wf_search_searched') === 'true');
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Internet API Discovery Search
+  const [apiSearchQuery, setApiSearchQuery] = useState('');
+  const [addedApiIds, setAddedApiIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    sessionStorage.setItem('wf_search_kw', keyword);
+    sessionStorage.setItem('wf_search_cat', selectedCategory);
+    sessionStorage.setItem('wf_search_res', JSON.stringify(results));
+    sessionStorage.setItem('wf_search_searched', hasSearched ? 'true' : 'false');
+  }, [keyword, selectedCategory, results, hasSearched]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,24 +83,15 @@ export const SearchPage: React.FC = () => {
     setIsSearching(false);
   };
 
-  const handleLocalFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setLocalVideoUrl(objectUrl);
-      setLocalVideoName(file.name);
-    }
+  const handleAddDiscoveredApi = (api: CmsApiSource) => {
+    addCustomApi({
+      ...api,
+      id: `custom_disc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    });
+    setAddedApiIds((prev) => [...prev, api.id]);
   };
 
-  const clearLocalVideo = () => {
-    if (localVideoUrl) {
-      URL.revokeObjectURL(localVideoUrl);
-    }
-    setLocalVideoUrl(null);
-    setLocalVideoName(null);
-  };
-
-  // Filter local results by category selection
+  // Filter results based on category
   const filteredResults = results.filter((item) => {
     if (selectedCategory === 'all') return true;
     const typeName = (item.type_name || '').toLowerCase();
@@ -92,16 +104,20 @@ export const SearchPage: React.FC = () => {
     return true;
   });
 
+  const discoveredApisFiltered = RECOMMENDED_ONLINE_APIS.filter((a) =>
+    apiSearchQuery ? a.name.includes(apiSearchQuery) || a.url.includes(apiSearchQuery) : true
+  );
+
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* Header Search Box */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-6 text-center">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-6 text-center">
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
-            全站集合搜索 & 本地视频播放
+            全网视频聚合搜索 & 接口探索
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-            并发请求全网源站接口，支持多分类搜索筛选与本地视频导入秒播
+            并发抓取 20+ 内置接口，多分类检索，搜索状态实时保留（页面返回不丢失）
           </p>
         </div>
 
@@ -126,7 +142,7 @@ export const SearchPage: React.FC = () => {
           })}
         </div>
 
-        {/* Form and Local File Upload */}
+        {/* Form and Video Parsing / Download Center Option */}
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -150,43 +166,74 @@ export const SearchPage: React.FC = () => {
               <span>聚合搜索</span>
             </button>
 
-            {/* Local Video Upload Option */}
-            <label className="cursor-pointer px-4 py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-sm">
-              <Upload className="w-4 h-4 text-amber-400" />
-              <span>本地视频</span>
-              <input
-                type="file"
-                accept="video/*,.m3u8,.mp4,.webm,.mkv,.flv"
-                onChange={handleLocalFileSelect}
-                className="hidden"
-              />
-            </label>
+            {/* Parse & Download Video Button */}
+            <button
+              type="button"
+              onClick={() => navigate('/download')}
+              className="px-4 py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl text-xs font-semibold flex items-center space-x-1.5 transition-colors shadow-sm whitespace-nowrap"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>解析并下载视频</span>
+            </button>
           </div>
         </form>
       </div>
 
-      {/* Local Video Player Modal/Section */}
-      {localVideoUrl && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-fox-500 font-bold text-base">
-              <FileVideo className="w-5 h-5" />
-              <span className="text-slate-900 dark:text-slate-100 truncate">本地视频播放: {localVideoName}</span>
-            </div>
-            <button
-              onClick={clearLocalVideo}
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
-              title="关闭本地视频"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* Internet API Discovery & Quick Addition Section */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Globe className="w-5 h-5 text-fox-500" />
+            <h2>互联网全网 API 动态探索与导入</h2>
           </div>
 
-          <HlsPlayer url={localVideoUrl} title={localVideoName || '本地视频'} />
+          <div className="relative max-w-xs w-full">
+            <input
+              type="text"
+              value={apiSearchQuery}
+              onChange={(e) => setApiSearchQuery(e.target.value)}
+              placeholder="搜索可用互联网 API..."
+              className="w-full px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+            />
+          </div>
         </div>
-      )}
 
-      {/* Search Results */}
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          探索并自动测试互联网优质 CMS 接口，一键添加至系统，拓宽全网搜索资源。
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+          {discoveredApisFiltered.map((api) => {
+            const isAdded = addedApiIds.includes(api.id) || apiList.some((a) => a.url === api.url);
+            return (
+              <div
+                key={api.id}
+                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs gap-2"
+              >
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
+                </div>
+
+                <button
+                  onClick={() => handleAddDiscoveredApi(api)}
+                  disabled={isAdded}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
+                    isAdded
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 cursor-default'
+                      : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
+                  }`}
+                >
+                  {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>{isAdded ? '已加入使用' : '加入使用'}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Search Results Section */}
       {isSearching ? (
         <div className="text-center py-16 space-y-3">
           <Loader2 className="w-10 h-10 animate-spin text-fox-500 mx-auto" />

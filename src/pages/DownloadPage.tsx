@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { HlsPlayer } from '../components/HlsPlayer';
 import { VideoItem, parsePlayUrls, PlaySource, Episode } from '../services/cmsApi';
-import { Download, Play, Copy, Check, Link as LinkIcon, Info, ArrowLeft, Layers, Film } from 'lucide-react';
+import { Download, Play, Copy, Check, Link as LinkIcon, Info, ArrowLeft, Layers, Film, Sparkles } from 'lucide-react';
 
 export const DownloadPage: React.FC = () => {
   const location = useLocation();
@@ -41,7 +41,7 @@ export const DownloadPage: React.FC = () => {
     }
   };
 
-  const handlePlayInline = (e: React.FormEvent) => {
+  const handleParseAndPlay = (e: React.FormEvent) => {
     e.preventDefault();
     if (downloadUrl.trim()) {
       setPlayingUrl(downloadUrl.trim());
@@ -64,7 +64,7 @@ export const DownloadPage: React.FC = () => {
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm flex items-center space-x-2 transition-colors shadow-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>返回海报 / 上一页</span>
+          <span>返回搜索 / 上一页</span>
         </button>
 
         {passedVideo && (
@@ -78,18 +78,18 @@ export const DownloadPage: React.FC = () => {
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-4">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-4">
         <div className="flex items-center space-x-3 text-fox-500">
           <Download className="w-8 h-8" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100">
-            {passedVideo ? `下载与解析 - ${passedVideo.vod_name}` : '下载中心与在线解析播放'}
+            {passedVideo ? `视频解析与下载 - ${passedVideo.vod_name}` : '视频解析与高速下载中心'}
           </h1>
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          粘贴任何 M3U8 / MP4 视频链接，可直接在线流畅播放或一键复制链接使用 NDM / M3U8 Downloader 进行高速下载。
+          直接粘贴任何 M3U8 / MP4 视频链接地址，或自动解析集数直链，提供在线极速播放预览与一键复制高速下载链接。
         </p>
 
-        <form onSubmit={handlePlayInline} className="space-y-4 pt-2">
+        <form onSubmit={handleParseAndPlay} className="space-y-4 pt-2">
           <div className="relative">
             <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -107,7 +107,7 @@ export const DownloadPage: React.FC = () => {
               className="px-6 py-3 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl shadow-lg shadow-fox-500/25 flex items-center space-x-2 transition-all"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>在线播放</span>
+              <span>解析并在线播放</span>
             </button>
 
             <button
@@ -116,7 +116,7 @@ export const DownloadPage: React.FC = () => {
               className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl flex items-center space-x-2 transition-all"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? '已复制链接' : '复制下载链接'}</span>
+              <span>{copied ? '已复制直链' : '复制下载直链'}</span>
             </button>
           </div>
         </form>
@@ -127,7 +127,7 @@ export const DownloadPage: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                   <Layers className="w-4 h-4 text-fox-500" />
-                  <span>下载线路</span>
+                  <span>下载线路选择</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {playSources.map((src, index) => (
@@ -157,7 +157,7 @@ export const DownloadPage: React.FC = () => {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">选集切换</h3>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">选集与解析列表</h3>
                 <span className="text-xs text-slate-400">共 {currentSource?.episodes.length || 0} 集</span>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-48 overflow-y-auto pr-1">
@@ -183,20 +183,23 @@ export const DownloadPage: React.FC = () => {
       {playingUrl && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">在线预览播放 (默认 360P)</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-fox-500" />
+              <span>在线解析播放预览</span>
+            </h2>
           </div>
-          <HlsPlayer url={playingUrl} title="下载页预览" />
+          <HlsPlayer url={playingUrl} title="视频解析预览" />
         </div>
       )}
 
       <div className="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 text-xs text-slate-600 dark:text-slate-400">
         <div className="flex items-center space-x-2 font-bold text-slate-800 dark:text-slate-200 text-sm">
           <Info className="w-4 h-4 text-fox-500" />
-          <span>下载建议说明</span>
+          <span>极速下载建议说明</span>
         </div>
         <ul className="list-disc list-inside space-y-1 leading-relaxed">
-          <li>M3U8 格式为切片视频流，建议使用 NDM、IDM、或 M3U8 Downloader 工具进行抓取合并下载。</li>
-          <li>部分源站开启了防盗链，若在线播放卡顿或无法下载，可尝试在设置中切换代理或使用桌面端下载软件。</li>
+          <li>M3U8 切片视频文件建议使用 NDM、IDM 或 M3U8 Downloader 多线程下载器复制链接后批量下载。</li>
+          <li>若在线播放出现跨域，可在播放卡片中开启【极速代理反查】突破源站限制。</li>
         </ul>
       </div>
     </div>
