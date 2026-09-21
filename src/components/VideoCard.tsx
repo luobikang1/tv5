@@ -71,18 +71,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         <button
           onClick={toggleFav}
           title={favorited ? '取消追剧收藏' : '加入追剧收藏'}
-          className={`absolute top-2 right-2 p-2 rounded-full shadow-lg transition-all z-10 ${
+          className={`absolute top-2.5 right-2.5 p-2 rounded-full shadow-xl transition-all z-20 ${
             favorited
-              ? 'bg-red-500 text-white scale-105'
-              : 'bg-black/60 hover:bg-red-500 text-white backdrop-blur-md border border-white/20'
+              ? 'bg-red-500 text-white scale-110 shadow-red-500/50'
+              : 'bg-black/60 hover:bg-red-500 text-white backdrop-blur-md border border-white/30'
           }`}
         >
           <Heart className={`w-3.5 h-3.5 ${favorited ? 'fill-current' : ''}`} />
         </button>
 
         {/* Latency / Network Ping Badge - Always visible on top left of poster */}
-        <div className="absolute top-2 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-emerald-400 text-[10px] font-bold z-10 shadow">
-          <Wifi className="w-3 h-3 text-emerald-400" />
+        <div className="absolute top-2.5 left-2.5 flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-black/75 backdrop-blur-md text-emerald-400 text-[10px] font-bold z-20 shadow-lg border border-white/10">
+          <Wifi className="w-3 h-3 text-emerald-400 animate-pulse" />
           <span>{latencyMs}ms</span>
         </div>
 
@@ -106,13 +106,13 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         </div>
 
         {video.vod_remarks && (
-          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-white text-[11px] font-medium">
+          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-white text-[11px] font-medium z-10 border border-white/10">
             {video.vod_remarks}
           </span>
         )}
 
         {video.source_name && (
-          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-fox-500/90 text-white text-[10px] font-bold tracking-wide uppercase shadow truncate max-w-[50%]">
+          <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-fox-500/90 text-white text-[10px] font-bold tracking-wide uppercase shadow truncate max-w-[50%] z-10">
             {video.source_name}
           </span>
         )}
