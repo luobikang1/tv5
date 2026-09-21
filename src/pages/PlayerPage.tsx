@@ -143,12 +143,13 @@ export const PlayerPage: React.FC = () => {
         </button>
 
         <div className="flex items-center space-x-2">
+          {/* Clean line stroke favorite button */}
           <button
             onClick={toggleFav}
             className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center space-x-2 transition-colors shadow-sm border ${
               favorited
-                ? 'bg-red-500 text-white border-red-500'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-50 hover:text-red-500'
+                ? 'bg-slate-800 text-amber-400 border-amber-400/50'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-amber-400'
             }`}
           >
             <Heart className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
@@ -173,7 +174,7 @@ export const PlayerPage: React.FC = () => {
         />
       ) : null}
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
         <div className="flex items-center space-x-3">
           <button
             onClick={handlePrevEpisode}
@@ -204,7 +205,7 @@ export const PlayerPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-md">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-md">
         {playSources.length > 1 && (
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -256,7 +257,7 @@ export const PlayerPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 shadow-md">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-3 shadow-md">
         <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">{video.vod_name}</h2>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
           <span>{video.vod_year}</span>

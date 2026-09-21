@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, VideoQuality } from '../context/AppContext';
-import { CmsApiSource } from '../services/defaultApis';
+import { CmsApiSource, DEFAULT_VIDEO_APIS } from '../services/defaultApis';
 import {
   Lock,
   Settings,
@@ -24,7 +24,16 @@ import {
   Palette,
   Image as ImageIcon,
   Sparkles,
+  Globe,
 } from 'lucide-react';
+
+const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
+  { id: 'disc_ff', name: '非凡极速资源 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_bf', name: '暴风超清资源 API', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_lz', name: '量子全高画质 API', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_ikun', name: 'iKun 极速无阻 API', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_sn', name: '神马云加速 API', url: 'https://img.smdy.cc/api.php/provide/vod', type: 'video' },
+];
 
 export const SettingsPage: React.FC = () => {
   const {
@@ -65,14 +74,19 @@ export const SettingsPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
-  // Cloudflare R2 State
+  // Cloudflare R2 Toggle & Configuration State
+  const [r2Enabled, setR2Enabled] = useState(() => localStorage.getItem('wf_r2_enabled') === 'true');
   const [r2Bucket, setR2Bucket] = useState(() => localStorage.getItem('wf_r2_bucket') || '');
   const [r2AccountId, setR2AccountId] = useState(() => localStorage.getItem('wf_r2_account_id') || '');
   const [r2CustomDomain, setR2CustomDomain] = useState(() => localStorage.getItem('wf_r2_custom_domain') || '');
   const [r2EgressUsageGB, setR2EgressUsageGB] = useState<number>(() => {
-    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '10.5'); // Default simulation 10.5GB to highlight warning flag
+    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '10.5'); // Simulation 10.5GB
   });
   const [r2Saved, setR2Saved] = useState(false);
+
+  // Internet API Discovery State
+  const [apiSearchQuery, setApiSearchQuery] = useState('');
+  const [addedApiIds, setAddedApiIds] = useState<string[]>([]);
 
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,8 +118,13 @@ export const SettingsPage: React.FC = () => {
     if (success) {
       setSyncMsg('D1 数据库同步成功！包含播放历史与追剧收藏');
     } else {
-      setSyncMsg('D1 同步未完成（请在 Cloudflare Pages 中绑定名为 DB 的 D1 数据库）');
+      setSyncMsg('D1 同步未完成（请在 Cloudflare Pages 中绑定名为 DB 的 D1 数据库并重新部署）');
     }
+  };
+
+  const handleToggleR2 = (enabled: boolean) => {
+    setR2Enabled(enabled);
+    localStorage.setItem('wf_r2_enabled', enabled ? 'true' : 'false');
   };
 
   const handleSaveR2 = (e: React.FormEvent) => {
@@ -146,6 +165,18 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleAddDiscoveredApi = (api: CmsApiSource) => {
+    addCustomApi({
+      ...api,
+      id: `custom_disc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    });
+    setAddedApiIds((prev) => [...prev, api.id]);
+  };
+
+  const discoveredApisFiltered = RECOMMENDED_ONLINE_APIS.filter((a) =>
+    apiSearchQuery ? a.name.includes(apiSearchQuery) || a.url.includes(apiSearchQuery) : true
+  );
+
   return (
     <div className="space-y-8 pb-16 max-w-4xl mx-auto">
       {/* Header */}
@@ -157,7 +188,7 @@ export const SettingsPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与面板设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理主页背景、首页介绍区背景、退出登录、Cloudflare R2 与 D1 数据库同步
+              管理主页背景、首页介绍区背景、退出登录、Cloudflare R2 开关与 D1 数据库同步
             </p>
           </div>
         </div>
@@ -314,7 +345,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Cloudflare R2 Object Storage Integration & 10GB Egress Warning */}
+      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -322,17 +353,29 @@ export const SettingsPage: React.FC = () => {
             <h2>Cloudflare R2 对象存储配置</h2>
           </div>
 
-          {/* Warning badge flag for 10GB egress limit */}
-          {r2EgressUsageGB >= 10 && (
-            <div className="px-3 py-1 bg-red-500/15 border border-red-500/30 text-red-500 rounded-full text-xs font-extrabold flex items-center space-x-1 animate-pulse">
-              <AlertTriangle className="w-4 h-4" />
-              <span>超过 10GB 免费流量出口预警 ⚠️</span>
-            </div>
-          )}
+          <div className="flex items-center space-x-3">
+            {r2EgressUsageGB >= 10 && (
+              <div className="px-3 py-1 bg-red-500/15 border border-red-500/30 text-red-500 rounded-full text-xs font-extrabold flex items-center space-x-1 animate-pulse">
+                <AlertTriangle className="w-4 h-4" />
+                <span>超过 10GB 免费流量出口预警 ⚠️</span>
+              </div>
+            )}
+
+            {/* Toggle switch for R2 */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={r2Enabled}
+                onChange={(e) => handleToggleR2(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+            </label>
+          </div>
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。
+          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。通过上方开关控制是否启用。
         </p>
 
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
@@ -445,7 +488,7 @@ export const SettingsPage: React.FC = () => {
             <span>历史记录: {historyList.length} 条</span>
           </div>
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
-            <Heart className="w-4 h-4 text-red-500 fill-current" />
+            <Heart className="w-4 h-4 text-slate-400 fill-current" />
             <span>追剧收藏: {favoritesList.length} 项</span>
           </div>
           <button
@@ -483,7 +526,7 @@ export const SettingsPage: React.FC = () => {
         </p>
       </section>
 
-      {/* API Source List & Custom Manager */}
+      {/* 1. Built-in & Custom API Source Manager */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -548,6 +591,60 @@ export const SettingsPage: React.FC = () => {
               )}
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 2. Internet API Discovery section placed directly below Built-in Manager */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Globe className="w-5 h-5 text-fox-500" />
+            <h2>互联网全网 API 动态探索与导入</h2>
+          </div>
+
+          <div className="relative max-w-xs w-full">
+            <input
+              type="text"
+              value={apiSearchQuery}
+              onChange={(e) => setApiSearchQuery(e.target.value)}
+              placeholder="搜索可用互联网 API..."
+              className="w-full px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+            />
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          探索并测试互联网优质 CMS 接口，一键点击【加入使用】即可直接合并添加至系统，拓宽搜索资源。
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+          {discoveredApisFiltered.map((api) => {
+            const isAdded = addedApiIds.includes(api.id) || apiList.some((a) => a.url === api.url);
+            return (
+              <div
+                key={api.id}
+                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs gap-2"
+              >
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
+                </div>
+
+                <button
+                  onClick={() => handleAddDiscoveredApi(api)}
+                  disabled={isAdded}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
+                    isAdded
+                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 cursor-default'
+                      : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
+                  }`}
+                >
+                  {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  <span>{isAdded ? '已加入使用' : '加入使用'}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </section>
 

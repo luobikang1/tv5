@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw, AlertTriangle, Sun, Volume1 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HlsPlayerProps {
@@ -22,6 +22,10 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [errorText, setErrorText] = useState<string | null>(null);
   const [useProxyFallback, setUseProxyFallback] = useState(false);
 
+  // Brightness and Volume Slider State
+  const [brightness, setBrightness] = useState<number>(100);
+  const [volume, setVolume] = useState<number>(100);
+
   const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
     let cleanUrl = rawUrl.trim();
     const isHttpsPage = window.location.protocol === 'https:';
@@ -36,7 +40,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     if (!video || !url) return;
 
     setErrorText(null);
-    video.preload = 'metadata';
+    video.preload = 'auto'; // Enhanced preloading
 
     const cleanUrl = url.trim();
     const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
@@ -52,15 +56,20 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         hlsRef.current.destroy();
       }
 
+      // Enhanced Buffer Configuration:
+      // First frame 5-sec buffer & decoder warmup + Min 30s / Max 600s (10 min) buffer for zero lag
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90,
-        maxBufferLength: 30,
+        lowLatencyMode: false,
+        backBufferLength: 180,
+        maxBufferLength: 600, // 10 minutes max buffer
         maxMaxBufferLength: 600,
-        maxBufferSize: 60 * 1000 * 1000,
+        maxBufferSize: 120 * 1024 * 1024, // 120MB buffer size limit
         maxBufferHole: 0.5,
         highBufferWatchdogPeriod: 2,
+        startFragPrefetch: true, // Decoder & segment preheat
+        testBandwidth: true,
+        progressive: true,
         startLevel: -1,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
@@ -93,6 +102,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           }
         }
 
+        // Preheat buffer and start playing
         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       });
 
@@ -178,8 +188,17 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     }
   };
 
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    setVolume(val);
+    if (videoRef.current) {
+      videoRef.current.volume = val / 100;
+      setIsMuted(val === 0);
+    }
+  };
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800">
         {errorText ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
@@ -202,6 +221,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           ref={videoRef}
           onEnded={onEnded}
           className="w-full h-full object-contain"
+          style={{ filter: `brightness(${brightness}%)` }}
           playsInline
         />
 
@@ -275,6 +295,37 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               <Maximize className="w-5 h-5" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Brightness and Volume Slider Options below Player */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold shadow-sm">
+        <div className="flex items-center space-x-3">
+          <Sun className="w-4 h-4 text-amber-500 flex-shrink-0" />
+          <span className="text-slate-700 dark:text-slate-300 w-16">屏幕亮度:</span>
+          <input
+            type="range"
+            min="30"
+            max="150"
+            value={brightness}
+            onChange={(e) => setBrightness(parseInt(e.target.value, 10))}
+            className="flex-1 accent-fox-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+          />
+          <span className="w-10 text-right text-slate-500 dark:text-slate-400">{brightness}%</span>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <Volume1 className="w-4 h-4 text-fox-500 flex-shrink-0" />
+          <span className="text-slate-700 dark:text-slate-300 w-16">播放音量:</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={volume}
+            onChange={handleVolumeChange}
+            className="flex-1 accent-fox-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+          />
+          <span className="w-10 text-right text-slate-500 dark:text-slate-400">{volume}%</span>
         </div>
       </div>
 

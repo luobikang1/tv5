@@ -67,14 +67,14 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
 
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
 
-        {/* Favorite Icon Button - Always visible on top right of poster */}
+        {/* Favorite Icon Button - Clean line stroke style matching adjacent controls */}
         <button
           onClick={toggleFav}
           title={favorited ? '取消追剧收藏' : '加入追剧收藏'}
-          className={`absolute top-2.5 right-2.5 p-2 rounded-full shadow-xl transition-all z-20 ${
+          className={`absolute top-2.5 right-2.5 p-2 rounded-full shadow-lg backdrop-blur-md transition-all z-20 border ${
             favorited
-              ? 'bg-red-500 text-white scale-110 shadow-red-500/50'
-              : 'bg-black/60 hover:bg-red-500 text-white backdrop-blur-md border border-white/30'
+              ? 'bg-slate-900/90 text-amber-400 border-amber-400/50 scale-105'
+              : 'bg-black/60 hover:text-amber-400 text-slate-200 hover:border-amber-400/50 border-white/20'
           }`}
         >
           <Heart className={`w-3.5 h-3.5 ${favorited ? 'fill-current' : ''}`} />
