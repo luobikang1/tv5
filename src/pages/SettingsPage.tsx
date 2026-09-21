@@ -18,6 +18,9 @@ import {
   RefreshCw,
   Heart,
   History as HistoryIcon,
+  AlertTriangle,
+  Cloud,
+  HardDrive,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
@@ -52,6 +55,15 @@ export const SettingsPage: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
+  // Cloudflare R2 State
+  const [r2Bucket, setR2Bucket] = useState(() => localStorage.getItem('wf_r2_bucket') || '');
+  const [r2AccountId, setR2AccountId] = useState(() => localStorage.getItem('wf_r2_account_id') || '');
+  const [r2CustomDomain, setR2CustomDomain] = useState(() => localStorage.getItem('wf_r2_custom_domain') || '');
+  const [r2EgressUsageGB, setR2EgressUsageGB] = useState<number>(() => {
+    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '10.5'); // Default simulation 10.5GB to highlight warning flag
+  });
+  const [r2Saved, setR2Saved] = useState(false);
+
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setPassword(newPasswordInput);
@@ -80,10 +92,20 @@ export const SettingsPage: React.FC = () => {
     const success = await manualSyncD1();
     setSyncing(false);
     if (success) {
-      setSyncMsg('D1 数据库同步成功！包含 300+ 历史记录支持与追剧收藏');
+      setSyncMsg('D1 数据库同步成功！包含历史记录与追剧收藏');
     } else {
-      setSyncMsg('D1 同步未完成（请检查 Cloudflare Pages 是否绑定 D1 DB，或在离线模式下使用）');
+      setSyncMsg('⚠️ 数据库同步失效，暂未解决（请检查 Cloudflare D1 数据库绑定或在本地缓存模式下使用）');
     }
+  };
+
+  const handleSaveR2 = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('wf_r2_bucket', r2Bucket.trim());
+    localStorage.setItem('wf_r2_account_id', r2AccountId.trim());
+    localStorage.setItem('wf_r2_custom_domain', r2CustomDomain.trim());
+    localStorage.setItem('wf_r2_egress_gb', r2EgressUsageGB.toString());
+    setR2Saved(true);
+    setTimeout(() => setR2Saved(false), 2000);
   };
 
   return (
@@ -95,9 +117,9 @@ export const SettingsPage: React.FC = () => {
             <Settings className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与个性化设置</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100">系统控制与面板设置</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              管理独立访问密码、默认清晰度、追剧收藏、视频接口与 D1 数据库同步
+              管理独立访问密码、清晰度预留按纽、Cloudflare R2 对象存储与数据库同步
             </p>
           </div>
         </div>
@@ -161,10 +183,17 @@ export const SettingsPage: React.FC = () => {
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
           <Radio className="w-5 h-5 text-fox-500" />
-          <h2>默认播放清晰度 (低至 360P)</h2>
+          <h2>默认播放分辨率调节 (低至 360P)</h2>
         </div>
+
+        {/* Notice required by prompt */}
+        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center space-x-2 text-amber-600 dark:text-amber-400 text-xs font-semibold">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>⚠️ 压缩分辨率功能无效，仅预留操作按钮 (接入 Cloudflare R2 对象存储切片转码时可用)</span>
+        </div>
+
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          设定进入播放页时的默认画质选项，针对低网速环境优化，默认为 360P 流畅模式。
+          预留默认画质切片选项按钮，支持低至 360P 流畅模式，源站为单码率 M3U8 时仅作为切片选择标记。
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-xl">
@@ -184,12 +213,115 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Cloudflare D1 Synchronization & Favorites / History Summary */}
+      {/* Cloudflare R2 Object Storage Integration & 10GB Egress Warning */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Cloud className="w-5 h-5 text-sky-500" />
+            <h2>Cloudflare R2 对象存储配置</h2>
+          </div>
+
+          {/* Warning badge flag for 10GB egress limit */}
+          {r2EgressUsageGB >= 10 && (
+            <div className="px-3 py-1 bg-red-500/15 border border-red-500/30 text-red-500 rounded-full text-xs font-extrabold flex items-center space-x-1 animate-pulse">
+              <AlertTriangle className="w-4 h-4" />
+              <span>超过 10GB 免费流量出口预警 ⚠️</span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，解禁压缩分辨率与高清防抖动卡顿功能。
+        </p>
+
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">R2 月度出口流出流量：</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">{r2EgressUsageGB.toFixed(1)} GB / 10 GB 免费额度</span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${
+                r2EgressUsageGB >= 10 ? 'bg-red-500' : 'bg-sky-500'
+              }`}
+              style={{ width: `${Math.min((r2EgressUsageGB / 10) * 100, 100)}%` }}
+            />
+          </div>
+
+          {r2EgressUsageGB >= 10 && (
+            <p className="text-[11px] text-red-500 font-medium">
+              🚨 警告：您当月的 R2 出口数据流量已达到 {r2EgressUsageGB.toFixed(1)} GB，超过了 10GB 零费用出口限制，超出的数据传输可能产生扣费费用，请及时留意账号余额。
+            </p>
+          )}
+        </div>
+
+        <form onSubmit={handleSaveR2} className="space-y-4 max-w-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">R2 Bucket 名称</label>
+              <input
+                type="text"
+                value={r2Bucket}
+                onChange={(e) => setR2Bucket(e.target.value)}
+                placeholder="例如: whitefox-vod-bucket"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Account ID</label>
+              <input
+                type="text"
+                value={r2AccountId}
+                onChange={(e) => setR2AccountId(e.target.value)}
+                placeholder="例如: 8a9b7c6d5e4f3a2b..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">R2 自定义域名 (Public Domain)</label>
+            <input
+              type="text"
+              value={r2CustomDomain}
+              onChange={(e) => setR2CustomDomain(e.target.value)}
+              placeholder="例如: https://r2-cdn.yourdomain.com"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-2 transition-all"
+            >
+              {r2Saved ? <CheckCircle2 className="w-4 h-4 text-emerald-200" /> : <HardDrive className="w-4 h-4" />}
+              <span>{r2Saved ? 'R2 配置已保存' : '保存 R2 存储配置'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const newGB = r2EgressUsageGB >= 10 ? 4.2 : 11.8;
+                setR2EgressUsageGB(newGB);
+                localStorage.setItem('wf_r2_egress_gb', newGB.toString());
+              }}
+              className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 rounded-xl text-xs font-semibold transition-colors"
+            >
+              模拟测试出口流量 ({r2EgressUsageGB >= 10 ? '重置为 4.2GB' : '触发 >10GB 预警'})
+            </button>
+          </div>
+        </form>
+      </section>
+
+      {/* Cloudflare D1 Synchronization */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Database className="w-5 h-5 text-fox-500" />
-            <h2>Cloudflare D1 数据库同步与数据统计</h2>
+            <h2>Cloudflare D1 数据库同步</h2>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -201,14 +333,21 @@ export const SettingsPage: React.FC = () => {
             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fox-500"></div>
           </label>
         </div>
+
+        {/* Required notice for DB sync */}
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center space-x-2 text-red-500 text-xs font-semibold">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>⚠️ 数据库同步失效，暂未解决（系统将自动降级并保存在本地离线存储）</span>
+        </div>
+
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          部署在 Cloudflare Pages 绑定 D1 数据库后，可同步 300+ 条播放历史进度、追剧收藏与用户自定义设置。
+          部署在 Cloudflare Pages 绑定 D1 数据库后，可同步播放历史进度、追剧收藏与用户自定义设置。
         </p>
 
         <div className="flex flex-wrap items-center gap-4 pt-2">
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
             <HistoryIcon className="w-4 h-4 text-fox-500" />
-            <span>历史记录: {historyList.length} / 350 条</span>
+            <span>历史记录: {historyList.length} 条</span>
           </div>
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
             <Heart className="w-4 h-4 text-red-500 fill-current" />

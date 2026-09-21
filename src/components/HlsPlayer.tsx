@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HlsPlayerProps {
@@ -24,7 +24,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
 
   const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
     let cleanUrl = rawUrl.trim();
-    // Auto-detect mixed content (HTTP url on HTTPS page)
     const isHttpsPage = window.location.protocol === 'https:';
     if ((useProxy || (isHttpsPage && cleanUrl.startsWith('http:'))) && !cleanUrl.includes('/api/proxy')) {
       return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
@@ -41,16 +40,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
 
     const cleanUrl = url.trim();
     const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
-
-    // If stream URL is an HTML page / iframe player rather than direct video/hls media
-    const isDirectMedia = cleanUrl.includes('.m3u8') || cleanUrl.includes('.mp4') || cleanUrl.includes('.webm') || cleanUrl.includes('.flv');
-
-    if (!isDirectMedia && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) && !useProxyFallback) {
-      // Direct html/iframe embed URL
-      if (cleanUrl.includes('share') || cleanUrl.includes('embed') || cleanUrl.includes('parse') || cleanUrl.includes('html')) {
-        // Will render in iframe fallback mode if user or system requests
-      }
-    }
 
     if (playableUrl.includes('.mp4') || playableUrl.includes('.webm')) {
       video.src = playableUrl;
@@ -75,7 +64,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         startLevel: -1,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
-          // Proxy sub-playlists or TS segments if main stream uses proxy fallback or HTTPS mixed content
           const isHttpsPage = window.location.protocol === 'https:';
           if ((useProxyFallback || (isHttpsPage && requestUrl.startsWith('http:'))) && !requestUrl.includes('/api/proxy')) {
             const proxied = `/api/proxy?url=${encodeURIComponent(requestUrl)}`;
@@ -191,98 +179,109 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   };
 
   return (
-    <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800">
-      {errorText ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
-          <AlertCircle className="w-12 h-12" />
-          <p className="font-semibold text-lg">{errorText}</p>
-          <button
-            onClick={() => {
-              setUseProxyFallback(true);
-              loadStream();
-            }}
-            className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>开启代理防跨域极速重试</span>
-          </button>
-        </div>
-      ) : null}
-
-      <video
-        ref={videoRef}
-        onEnded={onEnded}
-        className="w-full h-full object-contain"
-        playsInline
-      />
-
-      <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white z-10">
-        <div className="flex items-center space-x-4">
-          <button onClick={togglePlay} className="hover:text-fox-400 transition-colors">
-            {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-          </button>
-          <button onClick={toggleMute} className="hover:text-fox-400 transition-colors">
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </button>
-        </div>
-
-        <div className="flex items-center space-x-4 relative">
-          <button
-            onClick={() => {
-              setUseProxyFallback(!useProxyFallback);
-            }}
-            className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors ${
-              useProxyFallback
-                ? 'bg-emerald-600 border-emerald-500 text-white'
-                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            {useProxyFallback ? '代理反查已开启' : '启用极速代理'}
-          </button>
-
-          <div className="relative">
+    <div className="space-y-2">
+      <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800">
+        {errorText ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
+            <AlertCircle className="w-12 h-12" />
+            <p className="font-semibold text-lg">{errorText}</p>
             <button
-              onClick={() => setShowQualityMenu(!showQualityMenu)}
-              className="flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 transition-colors border border-slate-700"
+              onClick={() => {
+                setUseProxyFallback(true);
+                loadStream();
+              }}
+              className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg"
             >
-              <Settings className="w-3.5 h-3.5" />
-              <span>
-                {currentLevel === -1
-                  ? `自适应 (${defaultResolution}P)`
-                  : levels.find((l) => l.id === currentLevel)?.name || '画质'}
-              </span>
+              <RefreshCw className="w-4 h-4" />
+              <span>开启代理防跨域极速重试</span>
             </button>
+          </div>
+        ) : null}
 
-            {showQualityMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-32 bg-slate-900/95 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20 py-1 text-xs">
-                <button
-                  onClick={() => changeQuality(-1)}
-                  className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                    currentLevel === -1 ? 'text-fox-400 font-bold' : 'text-slate-300'
-                  }`}
-                >
-                  自动 (默认{defaultResolution}P)
-                </button>
-                {levels.map((lvl) => (
-                  <button
-                    key={lvl.id}
-                    onClick={() => changeQuality(lvl.id)}
-                    className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                      currentLevel === lvl.id ? 'text-fox-400 font-bold' : 'text-slate-300'
-                    }`}
-                  >
-                    {lvl.name}
-                  </button>
-                ))}
-              </div>
-            )}
+        <video
+          ref={videoRef}
+          onEnded={onEnded}
+          className="w-full h-full object-contain"
+          playsInline
+        />
+
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white z-10">
+          <div className="flex items-center space-x-4">
+            <button onClick={togglePlay} className="hover:text-fox-400 transition-colors">
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+            </button>
+            <button onClick={toggleMute} className="hover:text-fox-400 transition-colors">
+              {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+            </button>
           </div>
 
-          <button onClick={toggleFullscreen} className="hover:text-fox-400 transition-colors">
-            <Maximize className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-4 relative">
+            <button
+              onClick={() => {
+                setUseProxyFallback(!useProxyFallback);
+              }}
+              className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors ${
+                useProxyFallback
+                  ? 'bg-emerald-600 border-emerald-500 text-white'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              {useProxyFallback ? '代理反查已开启' : '启用极速代理'}
+            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowQualityMenu(!showQualityMenu)}
+                className="flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 transition-colors border border-slate-700"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>
+                  {currentLevel === -1
+                    ? `预留分辨率 (${defaultResolution}P)`
+                    : levels.find((l) => l.id === currentLevel)?.name || '画质'}
+                </span>
+              </button>
+
+              {showQualityMenu && (
+                <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-900/95 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20 py-1 text-xs">
+                  <div className="px-3 py-1 text-[10px] text-amber-400 font-bold border-b border-slate-800 flex items-center space-x-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>压缩分辨率功能无效，仅预留操作按钮</span>
+                  </div>
+                  <button
+                    onClick={() => changeQuality(-1)}
+                    className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === -1 ? 'text-fox-400 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    预留默认 ({defaultResolution}P)
+                  </button>
+                  {levels.map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => changeQuality(lvl.id)}
+                      className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                        currentLevel === lvl.id ? 'text-fox-400 font-bold' : 'text-slate-300'
+                      }`}
+                    >
+                      {lvl.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button onClick={toggleFullscreen} className="hover:text-fox-400 transition-colors">
+              <Maximize className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
+
+      <p className="text-[11px] text-amber-500/90 dark:text-amber-400/90 flex items-center space-x-1">
+        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>注意：压缩分辨率功能无效，仅预留操作按纽（接入 Cloudflare R2 对象存储时可用）。</span>
+      </p>
     </div>
   );
 };
