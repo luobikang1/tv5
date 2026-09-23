@@ -1,6 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, AlertCircle, RefreshCw, AlertTriangle, Sun, Volume1 } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Settings,
+  AlertCircle,
+  RefreshCw,
+  AlertTriangle,
+  Sun,
+  Volume1,
+  Tv2,
+  Sliders,
+  ShieldCheck,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface HlsPlayerProps {
@@ -26,6 +41,20 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [brightness, setBrightness] = useState<number>(100);
   const [volume, setVolume] = useState<number>(100);
 
+  // Progress Bar State (Current Time & Duration)
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+
+  // Cinema Mode (观影模式) State
+  const [isCinemaMode, setIsCinemaMode] = useState<boolean>(false);
+
+  const formatTime = (secs: number) => {
+    if (!secs || isNaN(secs)) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
   const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
     let cleanUrl = rawUrl.trim();
     const isHttpsPage = window.location.protocol === 'https:';
@@ -40,7 +69,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     if (!video || !url) return;
 
     setErrorText(null);
-    video.preload = 'auto'; // Enhanced preloading
+    video.preload = 'auto';
 
     const cleanUrl = url.trim();
     const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
@@ -56,18 +85,16 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         hlsRef.current.destroy();
       }
 
-      // Enhanced Buffer Configuration:
-      // First frame 5-sec buffer & decoder warmup + Min 30s / Max 600s (10 min) buffer for zero lag
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
         backBufferLength: 180,
-        maxBufferLength: 600, // 10 minutes max buffer
+        maxBufferLength: 600, // 10 minutes buffer
         maxMaxBufferLength: 600,
-        maxBufferSize: 120 * 1024 * 1024, // 120MB buffer size limit
+        maxBufferSize: 120 * 1024 * 1024,
         maxBufferHole: 0.5,
         highBufferWatchdogPeriod: 2,
-        startFragPrefetch: true, // Decoder & segment preheat
+        startFragPrefetch: true,
         testBandwidth: true,
         progressive: true,
         startLevel: -1,
@@ -102,7 +129,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           }
         }
 
-        // Preheat buffer and start playing
         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       });
 
@@ -111,7 +137,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               if (!useProxyFallback) {
-                console.log('Network error detected, enabling proxy fallback...');
+                console.log('Network error, auto-enabling proxy fallback...');
                 setUseProxyFallback(true);
               } else {
                 hls.startLoad();
@@ -125,7 +151,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               if (!useProxyFallback) {
                 setUseProxyFallback(true);
               } else {
-                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试点击下方“开启代理/重试”');
+                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试下方“开启代理/重试”');
               }
               break;
           }
@@ -197,9 +223,25 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     }
   };
 
+  const handleProgressSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const targetSec = parseFloat(e.target.value);
+    setCurrentTime(targetSec);
+    if (videoRef.current) {
+      videoRef.current.currentTime = targetSec;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800">
+    <div className={`space-y-4 ${isCinemaMode ? 'relative z-50 p-4 bg-slate-950/95 rounded-3xl shadow-2xl' : ''}`}>
+      {/* Cinema Mode Backdrop Dim Overlay */}
+      {isCinemaMode && (
+        <div
+          className="fixed inset-0 bg-black/90 z-40 transition-opacity"
+          onClick={() => setIsCinemaMode(false)}
+        />
+      )}
+
+      <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800 z-50">
         {errorText ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
             <AlertCircle className="w-12 h-12" />
@@ -220,11 +262,23 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         <video
           ref={videoRef}
           onEnded={onEnded}
+          onTimeUpdate={() => {
+            if (videoRef.current) {
+              setCurrentTime(videoRef.current.currentTime);
+              setDuration(videoRef.current.duration || 0);
+            }
+          }}
+          onLoadedMetadata={() => {
+            if (videoRef.current) {
+              setDuration(videoRef.current.duration || 0);
+            }
+          }}
           className="w-full h-full object-contain"
           style={{ filter: `brightness(${brightness}%)` }}
           playsInline
         />
 
+        {/* Clean video overlay containing play/pause, volume, cinema mode, and fullscreen without blocking window */}
         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white z-10">
           <div className="flex items-center space-x-4">
             <button onClick={togglePlay} className="hover:text-fox-400 transition-colors">
@@ -233,63 +287,23 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
             <button onClick={toggleMute} className="hover:text-fox-400 transition-colors">
               {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
             </button>
+            <span className="text-xs text-slate-300 font-mono">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
           </div>
 
-          <div className="flex items-center space-x-4 relative">
+          <div className="flex items-center space-x-3">
             <button
-              onClick={() => {
-                setUseProxyFallback(!useProxyFallback);
-              }}
-              className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors ${
-                useProxyFallback
-                  ? 'bg-emerald-600 border-emerald-500 text-white'
+              onClick={() => setIsCinemaMode(!isCinemaMode)}
+              className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors flex items-center space-x-1 ${
+                isCinemaMode
+                  ? 'bg-amber-500 border-amber-400 text-white shadow'
                   : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              {useProxyFallback ? '代理反查已开启' : '启用极速代理'}
+              <Tv2 className="w-3.5 h-3.5" />
+              <span>{isCinemaMode ? '退出观影' : '观影模式'}</span>
             </button>
-
-            <div className="relative">
-              <button
-                onClick={() => setShowQualityMenu(!showQualityMenu)}
-                className="flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 transition-colors border border-slate-700"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>
-                  {currentLevel === -1
-                    ? `预留分辨率 (${defaultResolution}P)`
-                    : levels.find((l) => l.id === currentLevel)?.name || '画质'}
-                </span>
-              </button>
-
-              {showQualityMenu && (
-                <div className="absolute bottom-full right-0 mb-2 w-48 bg-slate-900/95 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20 py-1 text-xs">
-                  <div className="px-3 py-1 text-[10px] text-amber-400 font-bold border-b border-slate-800 flex items-center space-x-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>压缩分辨率功能无效，仅预留操作按钮</span>
-                  </div>
-                  <button
-                    onClick={() => changeQuality(-1)}
-                    className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                      currentLevel === -1 ? 'text-fox-400 font-bold' : 'text-slate-300'
-                    }`}
-                  >
-                    预留默认 ({defaultResolution}P)
-                  </button>
-                  {levels.map((lvl) => (
-                    <button
-                      key={lvl.id}
-                      onClick={() => changeQuality(lvl.id)}
-                      className={`w-full px-3 py-2 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                        currentLevel === lvl.id ? 'text-fox-400 font-bold' : 'text-slate-300'
-                      }`}
-                    >
-                      {lvl.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             <button onClick={toggleFullscreen} className="hover:text-fox-400 transition-colors">
               <Maximize className="w-5 h-5" />
@@ -298,8 +312,87 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         </div>
       </div>
 
-      {/* Brightness and Volume Slider Options below Player */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold shadow-sm">
+      {/* Progress Bar (进度条选项 - 竖屏与横屏通用) */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex items-center space-x-3 shadow-sm z-50">
+        <span className="text-xs font-mono text-slate-600 dark:text-slate-400 min-w-[45px] text-right">
+          {formatTime(currentTime)}
+        </span>
+        <input
+          type="range"
+          min="0"
+          max={duration || 100}
+          step="0.1"
+          value={currentTime}
+          onChange={handleProgressSeek}
+          className="flex-1 accent-fox-500 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+        />
+        <span className="text-xs font-mono text-slate-600 dark:text-slate-400 min-w-[45px]">
+          {formatTime(duration)}
+        </span>
+      </div>
+
+      {/* External Control Bar below video window: Proxy toggle & Resolution selectors */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm z-50">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setUseProxyFallback(!useProxyFallback)}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
+              useProxyFallback
+                ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
+          </button>
+        </div>
+
+        <div className="relative flex items-center space-x-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">画质切片:</span>
+          <button
+            onClick={() => setShowQualityMenu(!showQualityMenu)}
+            className="flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-200 transition-all shadow-sm"
+          >
+            <Sliders className="w-3.5 h-3.5 text-fox-500" />
+            <span>
+              {currentLevel === -1
+                ? `预留分辨率 (${defaultResolution}P)`
+                : levels.find((l) => l.id === currentLevel)?.name || '画质切换'}
+            </span>
+          </button>
+
+          {showQualityMenu && (
+            <div className="absolute top-full right-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 py-1 text-xs">
+              <div className="px-3 py-1.5 text-[10px] text-amber-500 font-bold border-b border-slate-100 dark:border-slate-800 flex items-center space-x-1">
+                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                <span>压缩分辨率按纽已移至下方</span>
+              </div>
+              <button
+                onClick={() => changeQuality(-1)}
+                className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                  currentLevel === -1 ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                预留默认 ({defaultResolution}P)
+              </button>
+              {levels.map((lvl) => (
+                <button
+                  key={lvl.id}
+                  onClick={() => changeQuality(lvl.id)}
+                  className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                    currentLevel === lvl.id ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {lvl.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Brightness and Volume Sliders */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold shadow-sm z-50">
         <div className="flex items-center space-x-3">
           <Sun className="w-4 h-4 text-amber-500 flex-shrink-0" />
           <span className="text-slate-700 dark:text-slate-300 w-16">屏幕亮度:</span>

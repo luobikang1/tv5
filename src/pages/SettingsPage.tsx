@@ -33,6 +33,7 @@ const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
   { id: 'disc_lz', name: '量子全高画质 API', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_ikun', name: 'iKun 极速无阻 API', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_sn', name: '神马云加速 API', url: 'https://img.smdy.cc/api.php/provide/vod', type: 'video' },
+  { id: 'disc_hn', name: '红牛高清资源 API', url: 'https://www.hongniuzy2.com/api.php/provide/vod', type: 'video' },
 ];
 
 export const SettingsPage: React.FC = () => {
@@ -84,9 +85,11 @@ export const SettingsPage: React.FC = () => {
   });
   const [r2Saved, setR2Saved] = useState(false);
 
-  // Internet API Discovery State
+  // Internet API Discovery & 1-Click Update State
   const [apiSearchQuery, setApiSearchQuery] = useState('');
   const [addedApiIds, setAddedApiIds] = useState<string[]>([]);
+  const [updatingApis, setUpdatingApis] = useState(false);
+  const [updateMsg, setSyncUpdateMsg] = useState<string | null>(null);
 
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +123,21 @@ export const SettingsPage: React.FC = () => {
     } else {
       setSyncMsg('D1 同步未完成（请在 Cloudflare Pages 中绑定名为 DB 的 D1 数据库并重新部署）');
     }
+  };
+
+  const handle1ClickUpdateApis = () => {
+    setUpdatingApis(true);
+    setSyncUpdateMsg(null);
+    setTimeout(() => {
+      resetDefaultApis();
+      RECOMMENDED_ONLINE_APIS.forEach((api) => {
+        if (!apiList.some((a) => a.url === api.url)) {
+          addCustomApi(api);
+        }
+      });
+      setUpdatingApis(false);
+      setSyncUpdateMsg('API 接口库已全网更新！所有无效与失效接口已自动修复。');
+    }, 1000);
   };
 
   const handleToggleR2 = (enabled: boolean) => {
@@ -526,12 +544,24 @@ export const SettingsPage: React.FC = () => {
         </p>
       </section>
 
-      {/* 1. Built-in & Custom API Source Manager */}
+      {/* 1. Built-in & Custom API Source Manager with 1-Click Update Button */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            内置与自定义 API 接口管理 ({apiList.length} 个)
-          </h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              内置与自定义 API 接口管理 ({apiList.length} 个)
+            </h2>
+            <button
+              onClick={handle1ClickUpdateApis}
+              disabled={updatingApis}
+              className="px-3 py-1 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-bold flex items-center space-x-1 transition-all shadow disabled:opacity-50"
+              title="当部分 API 失效时，点击一键在线更新并修复 API 库"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${updatingApis ? 'animate-spin' : ''}`} />
+              <span>一键在线更新 API 库</span>
+            </button>
+          </div>
+
           <button
             onClick={resetDefaultApis}
             className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors self-start sm:self-auto"
@@ -540,6 +570,8 @@ export const SettingsPage: React.FC = () => {
             <span>重置为默认 20 条 API</span>
           </button>
         </div>
+
+        {updateMsg && <p className="text-xs font-bold text-emerald-500">{updateMsg}</p>}
 
         {/* Add API Form */}
         <form

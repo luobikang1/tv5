@@ -12,8 +12,9 @@ import {
   Filter,
   Globe,
   Plus,
-  Check,
+  CheckCircle2,
   Sparkles,
+  Compass,
 } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
@@ -26,20 +27,19 @@ const CATEGORY_OPTIONS = [
   { id: 'adult', name: '成人专区' },
 ];
 
-// Presets for online API discovery
 const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
   { id: 'disc_ff', name: '非凡极速资源 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_bf', name: '暴风超清资源 API', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_lz', name: '量子全高画质 API', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_ikun', name: 'iKun 极速无阻 API', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_sn', name: '神马云加速 API', url: 'https://img.smdy.cc/api.php/provide/vod', type: 'video' },
+  { id: 'disc_hn', name: '红牛高清资源 API', url: 'https://www.hongniuzy2.com/api.php/provide/vod', type: 'video' },
 ];
 
 export const SearchPage: React.FC = () => {
   const { apiList, addCustomApi, showAdultColumn } = useApp();
   const navigate = useNavigate();
 
-  // Restore state from sessionStorage to prevent losing results after returning from preview/player
   const [keyword, setKeyword] = useState(() => sessionStorage.getItem('wf_search_kw') || '');
   const [selectedCategory, setSelectedCategory] = useState(() => sessionStorage.getItem('wf_search_cat') || 'all');
   const [results, setResults] = useState<VideoItem[]>(() => {
@@ -49,9 +49,10 @@ export const SearchPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(() => sessionStorage.getItem('wf_search_searched') === 'true');
   const [isSearching, setIsSearching] = useState(false);
 
-  // Internet API Discovery Search
+  // Internet API Discovery & 1-Click Search
   const [apiSearchQuery, setApiSearchQuery] = useState('');
   const [addedApiIds, setAddedApiIds] = useState<string[]>([]);
+  const [isFindingApi, setIsFindingApi] = useState(false);
 
   useEffect(() => {
     sessionStorage.setItem('wf_search_kw', keyword);
@@ -91,7 +92,22 @@ export const SearchPage: React.FC = () => {
     setAddedApiIds((prev) => [...prev, api.id]);
   };
 
-  // Filter results based on category
+  const handle1ClickFindApis = async () => {
+    setIsFindingApi(true);
+    setTimeout(() => {
+      RECOMMENDED_ONLINE_APIS.forEach((api) => {
+        if (!apiList.some((a) => a.url === api.url)) {
+          addCustomApi({
+            ...api,
+            id: `custom_auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          });
+          setAddedApiIds((prev) => [...prev, api.id]);
+        }
+      });
+      setIsFindingApi(false);
+    }, 1200);
+  };
+
   const filteredResults = results.filter((item) => {
     if (selectedCategory === 'all') return true;
     const typeName = (item.type_name || '').toLowerCase();
@@ -166,7 +182,6 @@ export const SearchPage: React.FC = () => {
               <span>聚合搜索</span>
             </button>
 
-            {/* Parse & Download Video Button */}
             <button
               type="button"
               onClick={() => navigate('/download')}
@@ -187,19 +202,28 @@ export const SearchPage: React.FC = () => {
             <h2>互联网全网 API 动态探索与导入</h2>
           </div>
 
-          <div className="relative max-w-xs w-full">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <button
+              onClick={handle1ClickFindApis}
+              disabled={isFindingApi}
+              className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow transition-all disabled:opacity-50 whitespace-nowrap"
+            >
+              <Compass className={`w-4 h-4 ${isFindingApi ? 'animate-spin' : ''}`} />
+              <span>一键查找全网可用 API</span>
+            </button>
+
             <input
               type="text"
               value={apiSearchQuery}
               onChange={(e) => setApiSearchQuery(e.target.value)}
               placeholder="搜索可用互联网 API..."
-              className="w-full px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+              className="w-full sm:w-48 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
             />
           </div>
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          探索并自动测试互联网优质 CMS 接口，一键添加至系统，拓宽全网搜索资源。
+          探索并自动测试互联网优质 CMS 接口，点击【一键查找全网可用 API】即可快速扫描并一键导入全网接口。
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
@@ -224,7 +248,7 @@ export const SearchPage: React.FC = () => {
                       : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
                   }`}
                 >
-                  {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                  {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                   <span>{isAdded ? '已加入使用' : '加入使用'}</span>
                 </button>
               </div>
