@@ -31,7 +31,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [levels, setLevels] = useState<{ id: number; name: string; height: number }[]>([]);
+  const [levels, setLevels] = useState<{ id: number; name: string; height: number; bitrate: number }[]>([]);
   const [currentLevel, setCurrentLevel] = useState<number>(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -113,23 +113,33 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-        const availableLevels = data.levels.map((lvl, index) => ({
-          id: index,
-          name: lvl.height ? `${lvl.height}P` : `画质 ${index + 1}`,
-          height: lvl.height || 0,
-        }));
+        const availableLevels = data.levels.map((lvl, index) => {
+          const kbps = lvl.bitrate ? Math.round(lvl.bitrate / 1000) : 0;
+          const labelHeight = lvl.height || (index === 0 ? 360 : index === 1 ? 720 : 1080);
+          return {
+            id: index,
+            name: `${labelHeight}P (${kbps > 0 ? `${kbps} kbps` : '自适应'})`,
+            height: labelHeight,
+            bitrate: lvl.bitrate || 0,
+          };
+        });
         setLevels(availableLevels);
 
         if (defaultResolution !== 'auto' && availableLevels.length > 0) {
           const targetHeight = parseInt(defaultResolution, 10);
-          const foundIndex = availableLevels.findIndex((l) => Math.abs(l.height - targetHeight) < 100);
+          const foundIndex = availableLevels.findIndex((l) => Math.abs(l.height - targetHeight) < 120);
           if (foundIndex !== -1) {
             hls.currentLevel = foundIndex;
+            hls.nextLevel = foundIndex;
             setCurrentLevel(foundIndex);
           }
         }
 
         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+        setCurrentLevel(data.level);
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -209,6 +219,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const changeQuality = (levelId: number) => {
     if (hlsRef.current) {
       hlsRef.current.currentLevel = levelId;
+      hlsRef.current.nextLevel = levelId;
+      hlsRef.current.loadLevel = levelId;
       setCurrentLevel(levelId);
       setShowQualityMenu(false);
     }
@@ -422,9 +434,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         </div>
       </div>
 
-      <p className="text-[11px] text-amber-500/90 dark:text-amber-400/90 flex items-center space-x-1">
-        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-        <span>注意：压缩分辨率功能无效，仅预留操作按纽（接入 Cloudflare R2 对象存储时可用）。</span>
+      <p className="text-[11px] text-sky-600 dark:text-sky-400 font-medium flex items-center space-x-1">
+        <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-500" />
+        <span>支持多码率自适应（低至 360P）及代理切片缓存防卡顿加速，画质按键位于极速代理按键左侧。</span>
       </p>
     </div>
   );
