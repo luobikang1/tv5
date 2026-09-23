@@ -45,7 +45,7 @@
 
 ### 1. Cloudflare Pages 部署 (推荐，零成本)
 
-#### 方案 A：GitHub 自动关联部署（最简便）
+#### 方案 A：拉取部署（GitHub 自动关联）
 1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
 3. 选择 `whitefox5` 仓库，配置构建参数：
@@ -53,9 +53,16 @@
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
 4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与注册**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
+
+#### 方案 B：上传部署（直接上传静态文件 / Zip 压缩包）
+1. 在本地运行 `npm run build`，编译生成 `dist` 静态资源目录。
+2. 打开 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Upload assets**。
+3. 输入项目名称（如 `whitefox5`），直接将 `dist` 文件夹或压缩后的 Zip 文件拖拽上传。
+4. 点击 **Deploy site** 即可完成一键上线！
+
+#### D1 数据库绑定与同步设置
+- 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定变量名为 `DB` 的 D1 数据库。
+- 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
 
 ---
 
