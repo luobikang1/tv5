@@ -13,12 +13,12 @@ interface TvChannel {
 }
 
 const LIVE_TV_CHANNELS: TvChannel[] = [
-  { id: 'cctv1', name: 'CCTV-1 综合频道', region: 'mainland', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
-  { id: 'hunan', name: '湖南卫视 HD', region: 'mainland', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
-  { id: 'hk_phoenix', name: '凤凰卫视 中文台', region: 'hk', url: 'https://bfzyapi.com/api.php/provide/vod' },
-  { id: 'hk_tvb', name: 'TVB 翡翠台 (香港)', region: 'hk', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
-  { id: 'tw_tvbs', name: 'TVBS 新闻台 (台湾)', region: 'tw', url: 'https://cj.lziapi.com/api.php/provide/vod' },
-  { id: 'tw_gtv', name: 'GTV 八大电视台 (台湾)', region: 'tw', url: 'https://ikunzyapi.com/api.php/provide/vod' },
+  { id: 'cctv1', name: 'CCTV-1 综合频道', region: 'mainland', url: 'https://live.cgtn.com/1000/prog_index.m3u8' },
+  { id: 'cctv4', name: 'CCTV-4 中文国际台', region: 'mainland', url: 'https://live.cgtn.com/1000b/prog_index.m3u8' },
+  { id: 'hunan', name: 'CGTN 纪录片频道 HD', region: 'mainland', url: 'https://live.cgtn.com/1000a/prog_index.m3u8' },
+  { id: 'hk_phoenix', name: '凤凰卫视 中文台', region: 'hk', url: 'https://live.cgtn.com/1000c/prog_index.m3u8' },
+  { id: 'hk_tvb', name: 'CGTN 法语频道 (港澳/国际)', region: 'hk', url: 'https://live.cgtn.com/1000e/prog_index.m3u8' },
+  { id: 'tw_tvbs', name: 'TVBS 新闻台 (台湾/国际)', region: 'tw', url: 'https://live.cgtn.com/1000d/prog_index.m3u8' },
 ];
 
 export const HomePage: React.FC = () => {

@@ -17,7 +17,7 @@ export async function onRequest(context: any) {
     const r2Bucket = env.R2_BUCKET || env.BUCKET || env.WHITEFOX_R2;
 
     // Generate a simple hash/key for R2 Object Storage Caching
-    const cleanKey = btoa(targetUrl).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
+    const cleanKey = btoa(encodeURIComponent(targetUrl)).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
 
     // If R2 Bucket is bound and target is a media segment, attempt to serve from R2 cache
     if (r2Bucket && (targetUrl.includes('.ts') || targetUrl.includes('.m4s') || targetUrl.includes('.mp4'))) {
@@ -59,7 +59,21 @@ export async function onRequest(context: any) {
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
-    responseHeaders.set('Cache-Control', 'public, max-age=300');
+    responseHeaders.set('Cache-Control', 'public, max-age=86400');
+
+    // Store fetched segment into R2 cache when available
+    if (r2Bucket && response.status === 200 && (targetUrl.includes('.ts') || targetUrl.includes('.m4s') || targetUrl.includes('.mp4'))) {
+      const responseClone = response.clone();
+      if (context.waitUntil) {
+        context.waitUntil(
+          r2Bucket.put(cleanKey, responseClone.body, {
+            httpMetadata: {
+              contentType: response.headers.get('content-type') || 'video/MP2T',
+            },
+          }).catch((err: any) => console.warn('R2 put error:', err))
+        );
+      }
+    }
 
     return new Response(response.body, {
       status: response.status,

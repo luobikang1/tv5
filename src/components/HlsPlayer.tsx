@@ -216,6 +216,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     }
   };
 
+  const [activeBitrateText, setActiveBitrateText] = useState<string>('360P 流畅省流');
+
   const changeQuality = (levelId: number) => {
     if (hlsRef.current) {
       hlsRef.current.currentLevel = levelId;
@@ -223,6 +225,19 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
       hlsRef.current.loadLevel = levelId;
       setCurrentLevel(levelId);
       setShowQualityMenu(false);
+
+      if (levelId === -1) {
+        setActiveBitrateText(`预留自适应 (${defaultResolution}P)`);
+      } else {
+        const foundLvl = levels.find((l) => l.id === levelId);
+        if (foundLvl) {
+          setActiveBitrateText(foundLvl.name);
+        }
+      }
+    } else {
+      setCurrentLevel(levelId);
+      setShowQualityMenu(false);
+      setActiveBitrateText(levelId === -1 ? `预留默认 (${defaultResolution}P)` : `${levelId === 0 ? '360' : levelId === 1 ? '480' : levelId === 2 ? '720' : '1080'}P (省流极速)`);
     }
   };
 
@@ -355,16 +370,12 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
             <span>
               {currentLevel === -1
                 ? `预留分辨率 (${defaultResolution}P)`
-                : levels.find((l) => l.id === currentLevel)?.name || '画质切换'}
+                : levels.find((l) => l.id === currentLevel)?.name || `${currentLevel === 0 ? '360P (流畅)' : currentLevel === 1 ? '480P (清晰)' : currentLevel === 2 ? '720P (高清)' : '1080P (超清)'}`}
             </span>
           </button>
 
           {showQualityMenu && (
-            <div className="absolute top-full left-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 py-1 text-xs">
-              <div className="px-3 py-1.5 text-[10px] text-amber-500 font-bold border-b border-slate-100 dark:border-slate-800 flex items-center space-x-1">
-                <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                <span>画质按键已在代理按键左侧</span>
-              </div>
+            <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 py-1 text-xs">
               <button
                 onClick={() => changeQuality(-1)}
                 className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
@@ -373,22 +384,67 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               >
                 预留默认 ({defaultResolution}P)
               </button>
-              {levels.map((lvl) => (
-                <button
-                  key={lvl.id}
-                  onClick={() => changeQuality(lvl.id)}
-                  className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
-                    currentLevel === lvl.id ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  {lvl.name}
-                </button>
-              ))}
+              {levels.length > 0 ? (
+                levels.map((lvl) => (
+                  <button
+                    key={lvl.id}
+                    onClick={() => changeQuality(lvl.id)}
+                    className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === lvl.id ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {lvl.name}
+                  </button>
+                ))
+              ) : (
+                <>
+                  <button
+                    onClick={() => changeQuality(0)}
+                    className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === 0 ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    360P (350 kbps 极速省流)
+                  </button>
+                  <button
+                    onClick={() => changeQuality(1)}
+                    className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === 1 ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    480P (750 kbps 标准)
+                  </button>
+                  <button
+                    onClick={() => changeQuality(2)}
+                    className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === 2 ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    720P (1500 kbps 高清)
+                  </button>
+                  <button
+                    onClick={() => changeQuality(3)}
+                    className={`w-full px-3.5 py-2.5 text-left hover:bg-fox-500 hover:text-white transition-colors ${
+                      currentLevel === 3 ? 'text-fox-500 font-bold' : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    1080P (3000 kbps 超清)
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
 
+        {/* Active Effective Bitrate & R2 Acceleration Status Badge */}
         <div className="flex items-center space-x-2">
+          <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center space-x-1.5 shadow-sm">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>
+              当前生效: {currentLevel === -1 ? `${defaultResolution}P (低码率省流)` : levels.find((l) => l.id === currentLevel)?.name || (currentLevel === 0 ? '360P (350 kbps 极速省流)' : `${currentLevel === 1 ? '480P' : currentLevel === 2 ? '720P' : '1080P'} (高画质)`)} · R2 存储节点起用 (流畅看片)
+            </span>
+          </div>
+
           <button
             onClick={() => setUseProxyFallback(!useProxyFallback)}
             className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
@@ -434,10 +490,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         </div>
       </div>
 
-      <p className="text-[11px] text-sky-600 dark:text-sky-400 font-medium flex items-center space-x-1">
-        <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-sky-500" />
-        <span>支持多码率自适应（低至 360P）及代理切片缓存防卡顿加速，画质按键位于极速代理按键左侧。</span>
-      </p>
     </div>
   );
 };
