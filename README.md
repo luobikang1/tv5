@@ -6,26 +6,26 @@
 
 ## 🌟 核心特性
 
-- 🔒 **多重登录与流量保护面板**：
+- 🔒 **密码保护与流量安全面板**：
   - 支持**全局访问密码登录**、**账号密码登录**与**新用户注册**。
-  - 能够防止未授权人员刷量，有效避免云平台部署流量浪费。
+  - 防止未授权人员刷量，有效避免云平台部署流量浪费。
   - 提供**一键退出登录**与面板锁定功能。
-- ⚡ **卡顿与缓冲解决三大技术**：
-  1. **Nginx 代理缓存 / Cloudflare Worker 代理**：支持服务器端与 Worker 代理反查，解除跨域限制（CORS）与源站响应慢问题。
-  2. **预加载 + 预连接**：在 HTML/HLS 标签加入 `preconnect` 及 `dns-prefetch`，提前建连源站域名。
-  3. **多码率自适应切换 (低至 360P)**：内置低至 360P 流畅码率选项，弱网环境自动切至低码率，实现秒播无卡顿。
-- 🌐 **二十条互联网可用 API + 成人视频专栏**：默认自动配置 20 条优质 CMS 接口，支持全站集合搜索，且支持在设置中自动加载互联网成人影片 API 专栏。
-- 🎨 **白天/夜间模式切换**：支持一键切换深色/浅色主题。
-- 🕒 **播放历史与清除功能**：自动记录播放进度，支持单条记录删除及一键清空历史。
-- ⏬ **下载与内嵌播放**：播放页提供集数直链复制与下载页功能，下载页可直接粘贴 M3U8 在线测试与预览播放。
-- ☁️ **Cloudflare D1 数据库同步与注册认证**：支持调用 Cloudflare D1 数据库实时注册、登录与同步用户设置及观看历史。
-- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理 routing，彻底解决海报加载失败或破损问题。
+- ⚡ **流畅看片·三大抗卡顿技术**：
+  1. **Nginx 代理缓存 / Cloudflare Worker 代理**：解决源站响应慢与跨域（CORS）阻断。
+  2. **预加载 + 预连接 (Preconnect & DNS-Prefetch)**：提前建立源站 TCP/TLS 链接，提升首帧加载速度。
+  3. **多码率自适应切换 (默认 360P，低至 360P)**：弱网环境自动切至低码率，播放零缓冲无卡顿。
+- 🌐 **二十条互联网可用 API + 成人视频专栏**：默认自动配置 20 条优质 CMS 接口，支持全站聚合集合搜索，可在设置中开启成人影片 API 专栏。
+- 🎨 **日间/夜间模式与背景色切换**：支持一键切换深色/浅色主题及自定义护眼背景调色。
+- 🕒 **观看历史与单条/一键删除**：自动记录播放进度，支持单条历史记录删除及一键清空。
+- ⏬ **播放页下载与内嵌测试播放**：播放页提供集数直链复制与下载页功能，下载页可直接粘贴 M3U8 进行在线预览播放。
+- ☁️ **Cloudflare D1 数据库同步**：支持调用 Cloudflare D1 实时注册、登录与多端数据同步。
+- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理，彻底解决海报加载失败或破损问题。
 
 ---
 
 ## 🔑 核心环境变量
 
-> **注意事项**：部署时请在对应的云平台面板中将关键环境变量进行如下设置：
+> **注意事项**：部署时请在云平台环境变量设置中进行如下配置：
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -41,46 +41,6 @@
 
 ---
 
-## 🚀 部署指南
-
-### 1. Cloudflare Pages 部署 (推荐，零成本)
-
-#### 方案 A：GitHub 自动关联部署（最简便）
-1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
-3. 选择 `whitefox5` 仓库，配置构建参数：
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与注册**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
-
----
-
-### 2. Vercel 一键部署
-
-1. 在 Vercel 导入 GitHub 仓库：
-2. **Build Command**: `npm run build`
-3. **Output Directory**: `dist`
-4. 环境变量中添加 `PASSWORD`（可选）。
-5. 本项目已内置 `vercel.json` 规则，部署完成后系统路由与 `/api/proxy` 函数将自动生效。
-
----
-
-### 3. Docker & Docker-Compose 部署
-
-本项目已提供支持 **Nginx 代理缓存 (Anti-Lag)** 的 Dockerfile 及 docker-compose 配置文件。
-
-```bash
-# 拉取源码并启动 Docker 容器
-docker-compose up -d --build
-```
-启动后访问 `http://你的服务器IP:8080` 即可。
-
----
-
 ## 🛠️ 主要依赖
 
 ```text
@@ -88,7 +48,7 @@ docker-compose up -d --build
 │ 主要依赖库            │ 版本      │ 作用                               │
 ├────────────────────────────────────────────────────────────────────────┤
 │ react                 │ ^18.2.0   │ UI 视图核心框架                    │
-│ hls.js                │ ^1.5.8    │ HLS 视频流自适应解析与播放          │
+│ hls.js                │ ^1.5.8    │ HLS 视频流自适应解析与多码率切换    │
 │ tailwindcss           │ ^3.4.1    │ 响应式 UI 样式库                  │
 │ react-router-dom      │ ^6.22.3   │ 单页应用路由管理                  │
 │ lucide-react          │ ^0.344.0  │ 高质感矢量图标库                  │
@@ -97,7 +57,61 @@ docker-compose up -d --build
 
 ---
 
-## ⚙️ 恢复默认设置与退出登录
+## 🚀 极简部署指南
 
-- 点击右上角或设置页面中的 **【退出登录】** 按钮即可登出当前账号。
-- 如需重置配置，可进入【系统设置】-> 点击【恢复默认设置】按钮，系统将自动重置 API 接口列表、删除本地历史并还原出厂配置。
+### 1. Cloudflare Pages 部署 (推荐，零成本，强兼容)
+
+#### 方式 A：拉取部署 (Git 关联自动部署)
+1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
+3. 选择 `whitefox5` 仓库，配置构建参数：
+   - **Framework preset**: `Vite`
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+4. 点击 **Save and Deploy** 即可完成部署！
+
+#### 方式 B：上传部署 (直接上传压缩包 / 文件)
+1. 在本地运行 `npm run build` 打包，生成 `dist/` 文件夹。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> **Workers & Pages** -> **Create application** -> **Pages** -> **Upload assets**。
+3. 输入项目名称，将 `dist/` 文件夹内的所有文件拖拽上传即可完成部署！
+4. 本项目已内置 `public/_redirects` 和 `public/_routes.json`，确保 Cloudflare Pages 部署后 SPA 路由与代理接口完美无缝运行。
+
+#### 可选：绑定 D1 数据库 (数据云同步与注册)
+1. 在 Cloudflare 面板创建 D1 数据库（例如命名为 `whitefox-db`）。
+2. 在 Pages 项目设置中 -> **Settings** -> **Functions** -> **D1 database bindings** -> 绑定变量名为 `DB`。
+3. 打开白狐5面板，在【设置】中开启 D1 同步，即可使用在线用户注册、登录与播放记录同步。
+
+---
+
+### 2. Vercel 一键部署
+
+1. 登录 Vercel，导入本项目 GitHub 仓库：
+2. **Framework Preset**: `Vite`
+3. **Build Command**: `npm run build`
+4. **Output Directory**: `dist`
+5. 在 **Environment Variables** 中设置 `PASSWORD`（可选）。
+6. 内置 `vercel.json` 将自动处理 `/api/proxy` Serverless 代理与前端单页路由跳转。
+
+---
+
+### 3. Docker & Docker-Compose 部署
+
+本项目提供内置 **Nginx 代理缓存 (Anti-Lag)** 的 Docker 配置文件。
+
+```bash
+# 1. 拉取代码
+git clone https://github.com/your-repo/whitefox5.git
+cd whitefox5
+
+# 2. 一键构建并启动 Docker 容器
+docker-compose up -d --build
+```
+启动后访问 `http://你的服务器IP:8080` 即可。
+
+---
+
+## ⚙️ 恢复默认设置与常见操作
+
+- **恢复默认设置**：进入【系统设置】-> 点击【恢复默认设置】按钮，可清除本地所有自定义 API、密码、播放历史并重置为出厂配置。
+- **历史记录删除**：进入【历史记录】页面，可单条删除播放历史或点击【清空所有记录】。
+- **成人专区**：在【系统设置】中开启【成人影片专区模式】，主页将自动注入并加载成人影片 API 接口。
