@@ -12,8 +12,10 @@ export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
   { id: 'lzzy', name: '量子资源', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'ffzy', name: '非凡资源', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'hnzy', name: '红牛资源', url: 'https://www.hongniuzy2.com/api.php/provide/vod', type: 'video', isDefault: true },
-  { id: 'kuaici', name: '快车资源', url: 'https://caiji.kuaici.com/api.php/provide/vod', type: 'video', isDefault: true },
+  { id: 'hk_tvb', name: '香港翡翠台 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
+  { id: 'tw_gtv', name: '台湾八大 TV API', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'snzy', name: '索尼资源', url: 'https://suoniapi.com/api.php/provide/vod', type: 'video', isDefault: true },
+  { id: 'kuaici', name: '快车资源', url: 'https://caiji.kuaici.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'dbzy', name: '豆瓣资源', url: 'https://dbzy.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'wlzy', name: '卧龙资源', url: 'https://collect.wolongzyw.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'w2zy', name: '无尽资源', url: 'https://api.wujinapi.me/api.php/provide/vod', type: 'video', isDefault: true },
@@ -25,8 +27,6 @@ export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
   { id: 'jszy', name: '极速资源', url: 'https://jszyapi.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'bdzy', name: '百度资源', url: 'https://api.apibdzy.com/api.php/provide/vod', type: 'video', isDefault: true },
   { id: 'yhzy', name: '樱花资源', url: 'https://m3u8.apiyhzy.com/api.php/provide/vod', type: 'video', isDefault: true },
-  { id: 'kuaibo', name: '快播资源', url: 'https://www.kuaibozy.com/api.php/provide/vod', type: 'video', isDefault: true },
-  { id: 'mozu', name: '魔都资源', url: 'https://m3u8.maccms.site/api.php/provide/vod', type: 'video', isDefault: true },
 ];
 
 export const DEFAULT_ADULT_APIS: CmsApiSource[] = [

@@ -13,14 +13,16 @@ import {
   Globe,
   Plus,
   CheckCircle2,
-  Sparkles,
   Compass,
+  Tv,
 } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
   { id: 'all', name: '全部分类' },
   { id: 'movie', name: '电影' },
   { id: 'tv', name: '连续剧' },
+  { id: 'hk', name: '香港影视 (TVB)' },
+  { id: 'tw', name: '台湾影视 (GTV)' },
   { id: 'anime', name: '动漫' },
   { id: 'variety', name: '综艺' },
   { id: 'documentary', name: '纪录片' },
@@ -34,6 +36,8 @@ const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
   { id: 'disc_ikun', name: 'iKun 极速无阻 API', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'video' },
   { id: 'disc_sn', name: '神马云加速 API', url: 'https://img.smdy.cc/api.php/provide/vod', type: 'video' },
   { id: 'disc_hn', name: '红牛高清资源 API', url: 'https://www.hongniuzy2.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_hk', name: '香港 TVB 专享 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video' },
+  { id: 'disc_tw', name: '台湾 GTV 专享 API', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'video' },
 ];
 
 export const SearchPage: React.FC = () => {
@@ -71,6 +75,10 @@ export const SearchPage: React.FC = () => {
     let targetApis = apiList;
     if (selectedCategory === 'adult') {
       targetApis = apiList.filter((a) => a.type === 'adult');
+    } else if (selectedCategory === 'hk') {
+      targetApis = apiList.filter((a) => a.id.includes('hk') || a.name.includes('香港') || a.name.includes('暴风') || a.name.includes('非凡'));
+    } else if (selectedCategory === 'tw') {
+      targetApis = apiList.filter((a) => a.id.includes('tw') || a.name.includes('台湾') || a.name.includes('量子') || a.name.includes('红牛'));
     } else {
       targetApis = apiList.filter((a) => a.type !== 'adult');
     }
@@ -111,8 +119,13 @@ export const SearchPage: React.FC = () => {
   const filteredResults = results.filter((item) => {
     if (selectedCategory === 'all') return true;
     const typeName = (item.type_name || '').toLowerCase();
+    const vodName = (item.vod_name || '').toLowerCase();
+    const area = (item.vod_area || '').toLowerCase();
+
     if (selectedCategory === 'movie') return typeName.includes('影') || typeName.includes('片');
     if (selectedCategory === 'tv') return typeName.includes('剧') || typeName.includes('集');
+    if (selectedCategory === 'hk') return area.includes('香港') || typeName.includes('港') || vodName.includes('港');
+    if (selectedCategory === 'tw') return area.includes('台湾') || typeName.includes('台') || vodName.includes('台');
     if (selectedCategory === 'anime') return typeName.includes('漫') || typeName.includes('动');
     if (selectedCategory === 'variety') return typeName.includes('综艺') || typeName.includes('秀');
     if (selectedCategory === 'documentary') return typeName.includes('纪录') || typeName.includes('纪实');
@@ -130,10 +143,10 @@ export const SearchPage: React.FC = () => {
       <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xl space-y-6 text-center">
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100">
-            全网视频聚合搜索 & 接口探索
+            全网视频聚合搜索 & 港台接口探索
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
-            并发抓取 20+ 内置接口，多分类检索，搜索状态实时保留（页面返回不丢失）
+            并发抓取 20+ 内置接口，支持香港、台湾专门分类检索与接口扩展，搜索状态实时保留
           </p>
         </div>
 
@@ -166,7 +179,7 @@ export const SearchPage: React.FC = () => {
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="输入影片名称、演员或导演关键词..."
+              placeholder="输入影片名称、港剧、台剧、演员或导演关键词..."
               className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 transition-all text-sm sm:text-base"
               autoFocus
             />
@@ -199,7 +212,7 @@ export const SearchPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Globe className="w-5 h-5 text-fox-500" />
-            <h2>互联网全网 API 动态探索与导入</h2>
+            <h2>互联网全网 API 动态探索与导入 (含港台专线)</h2>
           </div>
 
           <div className="flex items-center space-x-2 w-full sm:w-auto">
@@ -223,7 +236,7 @@ export const SearchPage: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          探索并自动测试互联网优质 CMS 接口，点击【一键查找全网可用 API】即可快速扫描并一键导入全网接口。
+          探索并自动测试互联网优质 CMS 接口，支持港台电影电视剧专属源站，点击【一键查找全网可用 API】即可一键导入。
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">

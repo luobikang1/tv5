@@ -151,7 +151,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               if (!useProxyFallback) {
                 setUseProxyFallback(true);
               } else {
-                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试下方“开启代理/重试”');
+                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试点击下方“开启代理/重试”');
               }
               break;
           }
@@ -331,22 +331,8 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         </span>
       </div>
 
-      {/* External Control Bar below video window: Proxy toggle & Resolution selectors */}
+      {/* External Control Bar below video window: Resolution selector is moved to the left of Proxy toggle */}
       <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm z-50">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setUseProxyFallback(!useProxyFallback)}
-            className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
-              useProxyFallback
-                ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
-                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
-          </button>
-        </div>
-
         <div className="relative flex items-center space-x-2">
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">画质切片:</span>
           <button
@@ -362,10 +348,10 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           </button>
 
           {showQualityMenu && (
-            <div className="absolute top-full right-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 py-1 text-xs">
+            <div className="absolute top-full left-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 py-1 text-xs">
               <div className="px-3 py-1.5 text-[10px] text-amber-500 font-bold border-b border-slate-100 dark:border-slate-800 flex items-center space-x-1">
                 <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-                <span>压缩分辨率按纽已移至下方</span>
+                <span>画质按键已在代理按键左侧</span>
               </div>
               <button
                 onClick={() => changeQuality(-1)}
@@ -388,6 +374,20 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setUseProxyFallback(!useProxyFallback)}
+            className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
+              useProxyFallback
+                ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
+          </button>
         </div>
       </div>
 

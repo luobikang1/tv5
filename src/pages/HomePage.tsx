@@ -2,7 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { fetchVodList, VideoItem } from '../services/cmsApi';
 import { VideoCard } from '../components/VideoCard';
-import { Flame, Film, Tv, Sparkles, AlertTriangle, RefreshCw } from 'lucide-react';
+import { HlsPlayer } from '../components/HlsPlayer';
+import { Flame, Film, Tv, Sparkles, AlertTriangle, RefreshCw, Radio, Play, X } from 'lucide-react';
+
+interface TvChannel {
+  id: string;
+  name: string;
+  region: 'hk' | 'tw' | 'mainland';
+  url: string;
+}
+
+const LIVE_TV_CHANNELS: TvChannel[] = [
+  { id: 'cctv1', name: 'CCTV-1 综合频道', region: 'mainland', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
+  { id: 'hunan', name: '湖南卫视 HD', region: 'mainland', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
+  { id: 'hk_phoenix', name: '凤凰卫视 中文台', region: 'hk', url: 'https://bfzyapi.com/api.php/provide/vod' },
+  { id: 'hk_tvb', name: 'TVB 翡翠台 (香港)', region: 'hk', url: 'https://cj.ffzyapi.com/api.php/provide/vod' },
+  { id: 'tw_tvbs', name: 'TVBS 新闻台 (台湾)', region: 'tw', url: 'https://cj.lziapi.com/api.php/provide/vod' },
+  { id: 'tw_gtv', name: 'GTV 八大电视台 (台湾)', region: 'tw', url: 'https://ikunzyapi.com/api.php/provide/vod' },
+];
 
 export const HomePage: React.FC = () => {
   const { apiList, showAdultColumn, customHeroBgImage } = useApp();
@@ -10,6 +27,10 @@ export const HomePage: React.FC = () => {
   const [adultVideos, setAdultVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeApiIndex, setActiveApiIndex] = useState(0);
+
+  // Live TV State
+  const [activeTvRegion, setActiveTvRegion] = useState<'all' | 'hk_tw' | 'mainland'>('all');
+  const [activeTvChannel, setActiveTvChannel] = useState<TvChannel | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -45,6 +66,13 @@ export const HomePage: React.FC = () => {
       }
     : {};
 
+  const filteredTvChannels = LIVE_TV_CHANNELS.filter((ch) => {
+    if (activeTvRegion === 'all') return true;
+    if (activeTvRegion === 'hk_tw') return ch.region === 'hk' || ch.region === 'tw';
+    if (activeTvRegion === 'mainland') return ch.region === 'mainland';
+    return true;
+  });
+
   return (
     <div className="space-y-8 pb-16">
       {/* Hero Intro Banner with Custom Photo Background support */}
@@ -65,6 +93,85 @@ export const HomePage: React.FC = () => {
           </p>
         </div>
       </section>
+
+      {/* Chinese & Hong Kong / Taiwan Live TV Channels Section */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Radio className="w-5 h-5 text-fox-500" />
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">中文卫视 & 港台卫视直播专区</h2>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveTvRegion('all')}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+                activeTvRegion === 'all'
+                  ? 'bg-fox-500 text-white shadow'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              全部卫视
+            </button>
+            <button
+              onClick={() => setActiveTvRegion('hk_tw')}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+                activeTvRegion === 'hk_tw'
+                  ? 'bg-fox-500 text-white shadow'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              港台卫视
+            </button>
+            <button
+              onClick={() => setActiveTvRegion('mainland')}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+                activeTvRegion === 'mainland'
+                  ? 'bg-fox-500 text-white shadow'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              内地卫视
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {filteredTvChannels.map((ch) => (
+            <button
+              key={ch.id}
+              onClick={() => setActiveTvChannel(ch)}
+              className="p-3.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-fox-500 hover:text-white border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-1.5 transition-all group shadow-sm hover:scale-105"
+            >
+              <div className="p-2 bg-fox-100 dark:bg-fox-950 text-fox-500 group-hover:bg-white/20 group-hover:text-white rounded-xl transition-colors">
+                <Play className="w-4 h-4 fill-current" />
+              </div>
+              <span className="font-bold text-xs truncate w-full">{ch.name}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Live TV Player Modal */}
+      {activeTvChannel && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-fox-500 font-bold text-base">
+              <Radio className="w-5 h-5 animate-pulse" />
+              <span className="text-slate-900 dark:text-slate-100">正在播放卫视直播: {activeTvChannel.name}</span>
+            </div>
+            <button
+              onClick={() => setActiveTvChannel(null)}
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
+              title="关闭直播窗口"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <HlsPlayer url={activeTvChannel.url} title={activeTvChannel.name} />
+        </div>
+      )}
 
       <section className="space-y-4">
         <div className="flex items-center justify-between">
