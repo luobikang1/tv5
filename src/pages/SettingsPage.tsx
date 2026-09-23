@@ -87,39 +87,24 @@ export const SettingsPage: React.FC = () => {
   const [r2EgressUsageGB, setR2EgressUsageGB] = useState<number>(() => {
     const savedMonth = localStorage.getItem('wf_r2_month');
     if (savedMonth !== currentMonth) {
-      // New month: Auto-reset usage to 0.0GB and save current month
+      // New month or fresh start: Initial progress is 0.0 GB starting from current month
       localStorage.setItem('wf_r2_month', currentMonth);
       localStorage.setItem('wf_r2_egress_gb', '0.0');
-      localStorage.setItem('wf_r2_enabled', 'true');
       return 0.0;
     }
-    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '10.5'); // Default test simulation
+    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.0');
   });
 
   const [r2Enabled, setR2Enabled] = useState<boolean>(() => {
     const savedMonth = localStorage.getItem('wf_r2_month');
     if (savedMonth !== currentMonth) return true;
-    const usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '10.5');
+    const usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.0');
     if (usage >= 10.0) {
       localStorage.setItem('wf_r2_enabled', 'false');
       return false;
     }
     return localStorage.getItem('wf_r2_enabled') !== 'false';
   });
-
-  const updateR2UsageAndStatus = (newGB: number) => {
-    setR2EgressUsageGB(newGB);
-    localStorage.setItem('wf_r2_month', currentMonth);
-    localStorage.setItem('wf_r2_egress_gb', newGB.toString());
-
-    if (newGB >= 10.0) {
-      setR2Enabled(false);
-      localStorage.setItem('wf_r2_enabled', 'false');
-    } else {
-      setR2Enabled(true);
-      localStorage.setItem('wf_r2_enabled', 'true');
-    }
-  };
 
   // Internet API Discovery & 1-Click Update State
   const [apiSearchQuery, setApiSearchQuery] = useState('');
@@ -429,16 +414,16 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，超过 10GB 系统将<b>自动关闭 R2 代理以防止产生额外扣费，并在次月 1 日自动重置并重新开启</b>。
+          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，以今天起算（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
         </p>
 
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-700 dark:text-slate-300">
-              当月 ({currentMonth}) R2 出口流出流量：
+              当月 ({currentMonth}) R2 出口流出流量 (初始0.0 GB起算)：
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-100">
-              {r2EgressUsageGB.toFixed(1)} GB / 10.0 GB 免费额度 ({((r2EgressUsageGB / 10) * 100).toFixed(0)}%)
+              {r2EgressUsageGB.toFixed(2)} GB / 10.0 GB 免费额度 ({((r2EgressUsageGB / 10) * 100).toFixed(1)}%)
             </span>
           </div>
 
@@ -446,7 +431,7 @@ export const SettingsPage: React.FC = () => {
           <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-500 ${
-                r2EgressUsageGB >= 10 ? 'bg-red-500' : 'bg-sky-500'
+                r2EgressUsageGB >= 10 ? 'bg-red-500' : 'bg-emerald-500'
               }`}
               style={{ width: `${Math.min((r2EgressUsageGB / 10) * 100, 100)}%` }}
             />
@@ -456,15 +441,15 @@ export const SettingsPage: React.FC = () => {
             <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl space-y-1 text-[11px] text-red-600 dark:text-red-400">
               <p className="font-bold flex items-center space-x-1">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>当月 R2 10GB 免费流量已耗尽，系统已自动关闭 R2 选项</span>
+                <span>当月 R2 出站流量消耗超 10GB，系统已自动关闭 R2 功能</span>
               </p>
               <p>
-                当前当月使用量已达 <b>{r2EgressUsageGB.toFixed(1)} GB</b>。为了防止产生超出账单扣费，R2 对象存储代理已被系统自动停用。下月 1 日将自动清零并重新开启，或您可点击下方“测试出口流量”手动切换重置。
+                当前使用量已达 <b>{r2EgressUsageGB.toFixed(2)} GB</b>。为避免超出限制计费，R2 代理功能已自动停用（已取消自动开启）。
               </p>
             </div>
           ) : (
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-              ✅ 状态正常：当月 R2 免费出口额度充裕 ({ (10 - r2EgressUsageGB).toFixed(1) } GB 剩余)，加速引擎持续工作中。
+              ✅ 流量统计正常：已用 {r2EgressUsageGB.toFixed(2)} GB，剩余 { (10 - r2EgressUsageGB).toFixed(2) } GB 额度，数据实时同步中。
             </p>
           )}
         </div>
@@ -504,7 +489,7 @@ export const SettingsPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="submit"
               className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-2 transition-all"
@@ -513,16 +498,24 @@ export const SettingsPage: React.FC = () => {
               <span>{r2Saved ? 'R2 配置已保存' : '保存 R2 存储配置'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                const newGB = r2EgressUsageGB >= 10 ? 4.2 : 10.8;
-                updateR2UsageAndStatus(newGB);
-              }}
-              className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 rounded-xl text-xs font-semibold transition-colors"
-            >
-              模拟测试出口流量 ({r2EgressUsageGB >= 10 ? '模拟重置为 4.2GB' : '触发 >10GB 自动关闭'})
-            </button>
+            {/* R2 Connection Verification Status Badge (Green "接入成功") */}
+            {(() => {
+              const isConnected = r2Enabled && r2Bucket.trim().length > 0;
+              if (isConnected) {
+                return (
+                  <div className="px-4 py-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-sm">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <span>R2 对象存储接入成功 (绿色生效)</span>
+                  </div>
+                );
+              }
+              return (
+                <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl text-xs font-semibold flex items-center space-x-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <span>R2 暂未接入 (填写 Bucket 保存后显示接入成功)</span>
+                </div>
+              );
+            })()}
           </div>
         </form>
       </section>
