@@ -436,27 +436,56 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           )}
         </div>
 
-        {/* Active Effective Bitrate & R2 Acceleration Status Badge */}
-        <div className="flex items-center space-x-2">
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center space-x-1.5 shadow-sm">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>
-              当前生效: {currentLevel === -1 ? `${defaultResolution}P (低码率省流)` : levels.find((l) => l.id === currentLevel)?.name || (currentLevel === 0 ? '360P (350 kbps 极速省流)' : `${currentLevel === 1 ? '480P' : currentLevel === 2 ? '720P' : '1080P'} (高画质)`)} · R2 存储节点起用 (流畅看片)
-            </span>
-          </div>
+        {/* Active Effective Bitrate & R2 Acceleration Real Status Badge */}
+        {(() => {
+          const isR2ConfiguredAndActive = localStorage.getItem('wf_r2_enabled') === 'true' || useProxyFallback;
+          const isBitrateValid = !errorText && (isPlaying || duration > 0);
+          const currentQualityLabel =
+            currentLevel === -1
+              ? `${defaultResolution}P (低码率省流)`
+              : levels.find((l) => l.id === currentLevel)?.name ||
+                (currentLevel === 0 ? '360P (低码率省流)' : `${currentLevel === 1 ? '480P' : currentLevel === 2 ? '720P' : '1080P'} (高画质)`);
 
-          <button
-            onClick={() => setUseProxyFallback(!useProxyFallback)}
-            className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
-              useProxyFallback
-                ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
-                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
-          </button>
-        </div>
+          if (!isBitrateValid) {
+            return (
+              <div className="flex items-center space-x-2">
+                <div className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs font-bold flex items-center space-x-1.5 shadow-sm">
+                  <AlertCircle className="w-4 h-4 text-red-500" />
+                  <span>当前生效: 无效 (源站断开/无法加载) · R2 存储节点未建立</span>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex items-center space-x-2">
+              <div
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center space-x-1.5 shadow-sm ${
+                  isR2ConfiguredAndActive
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                <ShieldCheck className={`w-4 h-4 ${isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
+                <span>
+                  当前生效: {currentQualityLabel} · {isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : 'R2 存储节点无效 (未开启或额度用尽)'}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setUseProxyFallback(!useProxyFallback)}
+                className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
+                  useProxyFallback
+                    ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Brightness and Volume Sliders */}
