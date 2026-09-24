@@ -25,6 +25,10 @@ import {
   Image as ImageIcon,
   Sparkles,
   Globe,
+  Smartphone,
+  Users,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 
 const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
@@ -41,6 +45,7 @@ export const SettingsPage: React.FC = () => {
     currentPassword,
     setPassword,
     currentUser,
+    isAdmin,
     logout,
     customBgColor,
     setCustomBgColor,
@@ -63,6 +68,11 @@ export const SettingsPage: React.FC = () => {
     manualSyncD1,
     historyList,
     favoritesList,
+    devicesList,
+    registeredUsers,
+    removeDevice,
+    removeUser,
+    refreshUsersAndDevices,
   } = useApp();
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
@@ -311,7 +321,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Lock className="w-5 h-5 text-fox-500" />
-            <h2>白狐5 密码保护与账号控制</h2>
+            <h2>白狐5 密码保护与 30 天免登录持久会话</h2>
           </div>
 
           <button
@@ -324,7 +334,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          设置密码后，访问网站时需先输入密码解锁才能进入界面。留空保存即取消密码保护。点击“退出当前账号”可登出系统。
+          如不主动点击退出，登录后将在<b>一月内保持登入解锁状态</b>（免重复输入密码）。点击下方“保存密码设置”可直接无刷新更新系统独立访问密码。
         </p>
 
         <form onSubmit={handleSavePassword} className="space-y-4 max-w-md pt-1">
@@ -353,6 +363,112 @@ export const SettingsPage: React.FC = () => {
             <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
           </button>
         </form>
+      </section>
+
+      {/* Device Session Management & Registered Users Section */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Smartphone className="w-5 h-5 text-fox-500" />
+            <h2>已连接设备与注册用户列表管理</h2>
+          </div>
+
+          <button
+            onClick={refreshUsersAndDevices}
+            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>刷新云端用户与设备列表</span>
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          管理员（当前身份: <span className="font-bold text-fox-500">{currentUser || '全局管理员'}</span>）可查看与管理所有在线使用设备及已注册账户；注册用户可查看使用设备与注册人员名录。
+        </p>
+
+        {/* Device Management Directory */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+            <Smartphone className="w-4 h-4 text-sky-500" />
+            <span>当前已接入使用设备名录 ({devicesList.length} 台)</span>
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {devicesList.map((dev) => (
+              <div
+                key={dev.id}
+                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{dev.deviceName}</span>
+                    {dev.isCurrent && (
+                      <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-md">
+                        当前设备
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate mt-1">关联用户: {dev.username}</p>
+                  <p className="text-[10px] text-slate-400 truncate flex items-center space-x-1 mt-0.5">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span>活跃时间: {new Date(dev.lastActive).toLocaleString()}</span>
+                  </p>
+                </div>
+
+                {isAdmin && !dev.isCurrent && (
+                  <button
+                    onClick={() => removeDevice(dev.id)}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors flex-shrink-0"
+                    title="移除该设备"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Registered Users Directory */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+            <Users className="w-4 h-4 text-emerald-500" />
+            <span>注册账户列表 ({registeredUsers.length} 位)</span>
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {registeredUsers.map((u) => (
+              <div
+                key={u.username}
+                className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center space-x-2 min-w-0">
+                  <div className="p-2 bg-fox-100 dark:bg-fox-950 text-fox-500 rounded-xl">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{u.username}</p>
+                    <p className="text-[10px] text-slate-400">注册成员</p>
+                  </div>
+                </div>
+
+                {isAdmin && u.username !== 'admin' && u.username !== currentUser && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`确定要移除注册用户 ${u.username} 吗？`)) {
+                        removeUser(u.username);
+                      }
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                    title="移除注册账户"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Default Video Quality Selection */}

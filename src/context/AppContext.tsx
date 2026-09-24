@@ -26,6 +26,15 @@ export interface FavoriteItem {
   created_at: number;
 }
 
+export interface UserDeviceItem {
+  id: string;
+  username: string;
+  deviceName: string;
+  userAgent: string;
+  lastActive: number;
+  isCurrent?: boolean;
+}
+
 export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
 
 interface AppContextType {
@@ -37,9 +46,17 @@ interface AppContextType {
 
   // Account User Auth
   currentUser: string | null;
+  isAdmin: boolean;
   loginUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   registerUser: (username: string, pass: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+
+  // Devices & Registered Users Management
+  devicesList: UserDeviceItem[];
+  registeredUsers: { username: string; created_at?: number }[];
+  removeDevice: (deviceId: string) => void;
+  removeUser: (username: string) => Promise<boolean>;
+  refreshUsersAndDevices: () => Promise<void>;
 
   // Theme & Homepage Background Customization
   isDarkMode: boolean;
@@ -103,7 +120,13 @@ const STORAGE_KEYS = {
   HISTORY: 'wf_watch_history',
   FAVORITES: 'wf_favorites',
   D1_ENABLED: 'wf_d1_enabled',
+  UNLOCKED_UNTIL: 'wf_unlocked_until',
+  DEVICES: 'wf_devices',
+  USERS_LIST: 'wf_registered_users',
+  DEVICE_ID: 'wf_device_id',
 };
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Password State
@@ -117,11 +140,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem(STORAGE_KEYS.USER) || null;
   });
 
+  // Check 1-Month Persistent Unlock/Login State
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
     const envPass = (import.meta.env.VITE_PASSWORD as string) || '';
     const savedPass = localStorage.getItem(STORAGE_KEYS.PASSWORD) || envPass;
+    if (!savedPass) return true;
     const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    return !!savedUser || !savedPass || sessionStorage.getItem('wf_unlocked') === 'true';
+    if (savedUser) return true;
+
+    const unlockedUntil = localStorage.getItem(STORAGE_KEYS.UNLOCKED_UNTIL);
+    if (unlockedUntil && Date.now() < parseInt(unlockedUntil, 10)) {
+      return true;
+    }
+    return sessionStorage.getItem('wf_unlocked') === 'true';
+  });
+
+  const isAdmin = currentUser === 'admin' || currentUser === 'root' || (!currentUser && isUnlocked);
+
+  // Devices & Registered Users State
+  const [devicesList, setDevicesList] = useState<UserDeviceItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.DEVICES);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [registeredUsers, setRegisteredUsers] = useState<{ username: string; created_at?: number }[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.USERS_LIST);
+    return saved ? JSON.parse(saved) : [{ username: 'admin', created_at: Date.now() }];
   });
 
   // Theme State (Dark / Light Mode)
@@ -262,10 +306,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.HERO_BG_IMAGE);
   };
 
+  // Register Current Device Session
+  const recordCurrentDevice = (user: string) => {
+    let devId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+    if (!devId) {
+      devId = `dev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      localStorage.setItem(STORAGE_KEYS.DEVICE_ID, devId);
+    }
+
+    const ua = navigator.userAgent;
+    const isMobile = /mobile/i.test(ua);
+    const devName = isMobile ? '移动端手机 / 平板设备' : 'PC 桌面端浏览器';
+
+    const currentDevItem: UserDeviceItem = {
+      id: devId,
+      username: user,
+      deviceName: devName,
+      userAgent: ua.slice(0, 80),
+      lastActive: Date.now(),
+      isCurrent: true,
+    };
+
+    setDevicesList((prev) => {
+      const filtered = prev.filter((d) => d.id !== devId);
+      const updated = [currentDevItem, ...filtered];
+      localStorage.setItem(STORAGE_KEYS.DEVICES, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const verifyPassword = (inputPass: string): boolean => {
     if (!currentPassword || inputPass === currentPassword) {
       setIsUnlocked(true);
+      const expiry = Date.now() + THIRTY_DAYS_MS;
+      localStorage.setItem(STORAGE_KEYS.UNLOCKED_UNTIL, expiry.toString());
       sessionStorage.setItem('wf_unlocked', 'true');
+      recordCurrentDevice(currentUser || '独立密码用户');
       return true;
     }
     return false;
@@ -282,8 +358,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.success) {
         setCurrentUser(username);
         localStorage.setItem(STORAGE_KEYS.USER, username);
-        setIsUnlocked(true);
+        const expiry = Date.now() + THIRTY_DAYS_MS;
+        localStorage.setItem(STORAGE_KEYS.UNLOCKED_UNTIL, expiry.toString());
         sessionStorage.setItem('wf_unlocked', 'true');
+        setIsUnlocked(true);
+        recordCurrentDevice(username);
 
         // Fetch D1 user data
         if (d1Enabled) {
@@ -300,8 +379,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (username && pass) {
         setCurrentUser(username);
         localStorage.setItem(STORAGE_KEYS.USER, username);
-        setIsUnlocked(true);
+        const expiry = Date.now() + THIRTY_DAYS_MS;
+        localStorage.setItem(STORAGE_KEYS.UNLOCKED_UNTIL, expiry.toString());
         sessionStorage.setItem('wf_unlocked', 'true');
+        setIsUnlocked(true);
+        recordCurrentDevice(username);
         return { success: true };
       }
       return { success: false, message: '登录失败' };
@@ -325,9 +407,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const refreshUsersAndDevices = async () => {
+    if (d1Enabled) {
+      try {
+        const res = await fetch('/api/d1/sync?action=get_users');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.users)) {
+          setRegisteredUsers(data.users);
+          localStorage.setItem(STORAGE_KEYS.USERS_LIST, JSON.stringify(data.users));
+        }
+      } catch (err) {
+        console.warn('Fetch registered users from D1 error:', err);
+      }
+    }
+  };
+
+  const removeDevice = (deviceId: string) => {
+    setDevicesList((prev) => {
+      const updated = prev.filter((d) => d.id !== deviceId);
+      localStorage.setItem(STORAGE_KEYS.DEVICES, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeUser = async (username: string): Promise<boolean> => {
+    setRegisteredUsers((prev) => {
+      const updated = prev.filter((u) => u.username !== username);
+      localStorage.setItem(STORAGE_KEYS.USERS_LIST, JSON.stringify(updated));
+      return updated;
+    });
+
+    if (d1Enabled) {
+      try {
+        await fetch('/api/d1/sync?action=delete_user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+      } catch (err) {
+        console.warn('Delete user in D1 error:', err);
+      }
+    }
+    return true;
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.UNLOCKED_UNTIL);
     sessionStorage.removeItem('wf_unlocked');
     setIsUnlocked(!currentPassword);
   };
@@ -504,9 +631,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPassword,
         currentPassword,
         currentUser,
+        isAdmin,
         loginUser,
         registerUser,
         logout,
+        devicesList,
+        registeredUsers,
+        removeDevice,
+        removeUser,
+        refreshUsersAndDevices,
         isDarkMode,
         toggleDarkMode,
         customBgColor,

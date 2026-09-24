@@ -95,6 +95,17 @@ export async function onRequest(context: any) {
         }
       }
 
+      // Delete user endpoint (admin action)
+      if (action === 'delete_user') {
+        const { username } = body;
+        if (username) {
+          await db.prepare('DELETE FROM users WHERE username = ?').bind(username).run();
+          return new Response(JSON.stringify({ success: true, message: '用户已成功注销删除' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
       // Sync Key-Value store
       const { key, value } = body;
       if (!key) {
@@ -118,6 +129,13 @@ export async function onRequest(context: any) {
     }
 
     if (request.method === 'GET') {
+      if (action === 'get_users') {
+        const { results } = await db.prepare('SELECT username, created_at FROM users').all();
+        return new Response(JSON.stringify({ success: true, users: results }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const key = url.searchParams.get('key');
 
       if (!key) {
