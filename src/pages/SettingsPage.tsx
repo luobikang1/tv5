@@ -87,12 +87,11 @@ export const SettingsPage: React.FC = () => {
   const [r2EgressUsageGB, setR2EgressUsageGB] = useState<number>(() => {
     const savedMonth = localStorage.getItem('wf_r2_month');
     if (savedMonth !== currentMonth) {
-      // New month or fresh start: Initial progress is 0.0 GB starting from current month
       localStorage.setItem('wf_r2_month', currentMonth);
-      localStorage.setItem('wf_r2_egress_gb', '0.0');
+      localStorage.setItem('wf_r2_egress_gb', '0.00');
       return 0.0;
     }
-    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.0');
+    return parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.00');
   });
 
   const [r2Enabled, setR2Enabled] = useState<boolean>(() => {
@@ -417,13 +416,12 @@ export const SettingsPage: React.FC = () => {
           接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
         </p>
 
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              当月 ({currentMonth}) R2 出口流出流量 (初始0.0 GB起算)：
-            </span>
-            <span className="font-bold text-slate-900 dark:text-slate-100">
-              {r2EgressUsageGB.toFixed(2)} GB / 10.0 GB 免费额度 ({((r2EgressUsageGB / 10) * 100).toFixed(1)}%)
+        {/* Simplified R2 Egress Traffic Statistics Window */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+          <div className="flex items-center justify-between text-xs font-mono font-bold">
+            <span className="text-slate-600 dark:text-slate-400">R2 流量消耗进度:</span>
+            <span className="text-slate-900 dark:text-slate-100">
+              {r2EgressUsageGB.toFixed(2)} GB / 10.00 GB ({((r2EgressUsageGB / 10) * 100).toFixed(1)}%)
             </span>
           </div>
 
@@ -437,21 +435,9 @@ export const SettingsPage: React.FC = () => {
             />
           </div>
 
-          {r2EgressUsageGB >= 10 ? (
-            <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-xl space-y-1 text-[11px] text-red-600 dark:text-red-400">
-              <p className="font-bold flex items-center space-x-1">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>当月 R2 出站流量消耗超 10GB，系统已自动关闭 R2 功能</span>
-              </p>
-              <p>
-                当前使用量已达 <b>{r2EgressUsageGB.toFixed(2)} GB</b>。为避免超出限制计费，R2 代理功能已自动停用（已取消自动开启）。
-              </p>
-            </div>
-          ) : (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-              ✅ 流量统计正常：已用 {r2EgressUsageGB.toFixed(2)} GB，剩余 { (10 - r2EgressUsageGB).toFixed(2) } GB 额度，数据实时同步中。
-            </p>
-          )}
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+            💡 说明：R2 出站流量已开启实时记录，连接 D1 数据库后将自动进行云端跨端同步。
+          </p>
         </div>
 
         <form onSubmit={handleSaveR2} className="space-y-4 max-w-lg">

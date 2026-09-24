@@ -216,6 +216,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setCustomHeroBgImageState(data.heroBgImage);
             localStorage.setItem(STORAGE_KEYS.HERO_BG_IMAGE, data.heroBgImage);
           }
+          if (typeof data.r2EgressUsageGB === 'number') {
+            localStorage.setItem('wf_r2_egress_gb', data.r2EgressUsageGB.toString());
+          }
         }
       });
     }
@@ -463,6 +466,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const manualSyncD1 = async (): Promise<boolean> => {
     const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+    const r2Usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.00');
     return await syncToD1(syncKey, {
       history: historyList,
       favorites: favoritesList,
@@ -470,6 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bgColor: customBgColor,
       bgImage: customBgImage,
       heroBgImage: customHeroBgImage,
+      r2EgressUsageGB: r2Usage,
     });
   };
 
