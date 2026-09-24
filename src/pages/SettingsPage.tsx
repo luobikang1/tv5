@@ -414,7 +414,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，以今天起算（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
+          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
         </p>
 
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
@@ -498,21 +498,26 @@ export const SettingsPage: React.FC = () => {
               <span>{r2Saved ? 'R2 配置已保存' : '保存 R2 存储配置'}</span>
             </button>
 
-            {/* R2 Connection Verification Status Badge (Green "接入成功") */}
+            {/* R2 Connection Verification Status Badge & Redeploy Notice */}
             {(() => {
-              const isConnected = r2Enabled && r2Bucket.trim().length > 0;
+              const isConnected = r2Enabled && (r2Bucket.trim().length > 0 || localStorage.getItem('wf_r2_bucket'));
               if (isConnected) {
                 return (
-                  <div className="px-4 py-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-sm">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    <span>R2 对象存储接入成功 (绿色生效)</span>
+                  <div className="flex flex-col space-y-1">
+                    <div className="px-4 py-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-sm">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>✅ R2 对象存储接入成功 (绿灯生效中)</span>
+                    </div>
+                    <span className="text-[10px] text-amber-500 font-medium">
+                      注意：若刚在 Cloudflare 控制台绑定 Bucket 变量 (R2_BUCKET)，需在 CF 点击重新部署 (Redeploy) 才能使 Pages Functions 接口完全连接生效。
+                    </span>
                   </div>
                 );
               }
               return (
                 <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl text-xs font-semibold flex items-center space-x-1.5">
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  <span>R2 暂未接入 (填写 Bucket 保存后显示接入成功)</span>
+                  <span>⚠️ R2 暂未接入/未开启 (保存 Bucket 并开启开关后生效)</span>
                 </div>
               );
             })()}
