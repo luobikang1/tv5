@@ -29,7 +29,26 @@ import {
   Users,
   XCircle,
   Clock,
+  UploadCloud,
+  Download,
+  Share2,
+  Copy,
+  FileText,
+  Video,
+  Music,
+  File,
+  X,
 } from 'lucide-react';
+
+interface StoredCloudFile {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  category: string;
+  uploadDate: string;
+  url: string;
+  fileType: string;
+}
 
 const RECOMMENDED_ONLINE_APIS: CmsApiSource[] = [
   { id: 'disc_ff', name: '非凡极速资源 API', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'video' },
@@ -120,6 +139,131 @@ export const SettingsPage: React.FC = () => {
   const [addedApiIds, setAddedApiIds] = useState<string[]>([]);
   const [updatingApis, setUpdatingApis] = useState(false);
   const [updateMsg, setSyncUpdateMsg] = useState<string | null>(null);
+
+  // Local File Upload & R2 Cloud Storage Manager State
+  const [cloudFiles, setCloudFiles] = useState<StoredCloudFile[]>(() => {
+    const saved = localStorage.getItem('wf_cloud_files');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [fileCategory, setFileCategory] = useState<string>('视频');
+  const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<StoredCloudFile | null>(null);
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+
+  const calculateTotalSizeMB = () => {
+    const totalBytes = cloudFiles.reduce((acc, f) => acc + (f.sizeBytes || 0), 0);
+    return totalBytes / (1024 * 1024);
+  };
+
+  const usedMB = calculateTotalSizeMB();
+  const totalGB = 10.0;
+  const usedGB = usedMB / 1024;
+  const remainingGB = Math.max(0, totalGB - usedGB);
+
+  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', fileCategory);
+
+      const res = await fetch('/api/r2/storage', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.file) {
+        const newFileItem: StoredCloudFile = data.file;
+        const updated = [newFileItem, ...cloudFiles];
+        setCloudFiles(updated);
+        try {
+          // Store lightweight file metadata list without heavy base64 payloads
+          const metaOnly = updated.map((f) => ({
+            id: f.id,
+            name: f.name,
+            sizeBytes: f.sizeBytes,
+            category: f.category,
+            uploadDate: f.uploadDate,
+            url: f.url,
+            fileType: f.fileType,
+          }));
+          localStorage.setItem('wf_cloud_files', JSON.stringify(metaOnly));
+        } catch (storageErr) {
+          console.warn('LocalStorage quota limit reached for metadata list:', storageErr);
+        }
+
+        const addedGB = file.size / (1024 * 1024 * 1024);
+        const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
+        setR2EgressUsageGB(newEgressGB);
+        localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
+      } else {
+        // Fallback for offline dev
+        const blobUrl = URL.createObjectURL(file);
+        const newFileItem: StoredCloudFile = {
+          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: file.name,
+          sizeBytes: file.size,
+          category: fileCategory,
+          uploadDate: new Date().toLocaleString(),
+          url: blobUrl,
+          fileType: file.type || 'application/octet-stream',
+        };
+        const updated = [newFileItem, ...cloudFiles];
+        setCloudFiles(updated);
+      }
+    } catch (err) {
+      console.warn('R2 upload endpoint error, using blob URL fallback:', err);
+      const blobUrl = URL.createObjectURL(file);
+      const newFileItem: StoredCloudFile = {
+        id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        name: file.name,
+        sizeBytes: file.size,
+        category: fileCategory,
+        uploadDate: new Date().toLocaleString(),
+        url: blobUrl,
+        fileType: file.type || 'application/octet-stream',
+      };
+      const updated = [newFileItem, ...cloudFiles];
+      setCloudFiles(updated);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteCloudFile = async (id: string) => {
+    const updated = cloudFiles.filter((f) => f.id !== id);
+    setCloudFiles(updated);
+    try {
+      localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+    } catch {
+      // Ignore quota errors on deletion
+    }
+
+    try {
+      await fetch(`/api/r2/storage?key=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn('Failed to delete from R2 endpoint:', err);
+    }
+  };
+
+  const handleCopyShareLink = (file: StoredCloudFile) => {
+    const shareUrl = file.url.startsWith('data:')
+      ? `${window.location.origin}/download?name=${encodeURIComponent(file.name)}`
+      : file.url;
+
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopiedShareId(file.id);
+      setTimeout(() => setCopiedShareId(null), 2000);
+    });
+  };
 
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
@@ -517,16 +661,20 @@ export const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Toggle switch for R2 */}
-            <label className="relative inline-flex items-center cursor-pointer">
+            {/* Toggle switch for R2 (Admin Only) */}
+            <label className={`relative inline-flex items-center ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
               <input
                 type="checkbox"
                 checked={r2Enabled}
-                onChange={(e) => handleToggleR2(e.target.checked)}
+                disabled={!isAdmin}
+                onChange={(e) => isAdmin && handleToggleR2(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
             </label>
+            {!isAdmin && (
+              <span className="text-[10px] text-amber-500 font-bold">（仅限管理员可操作）</span>
+            )}
           </div>
         </div>
 
@@ -854,6 +1002,191 @@ export const SettingsPage: React.FC = () => {
           })}
         </div>
       </section>
+
+      {/* R2 Cloud Local File Upload & Storage Manager (设置底部) */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <UploadCloud className="w-6 h-6 text-sky-500" />
+            <h2>R2 本地文件上传与云盘存储</h2>
+          </div>
+
+          <div className="flex items-center space-x-2 text-xs font-mono font-bold">
+            <span className="text-slate-500 dark:text-slate-400">免费存储总量: 10.00 GB</span>
+            <span className="text-emerald-500">剩余: {remainingGB.toFixed(2)} GB</span>
+          </div>
+        </div>
+
+        {/* Free Storage Space Progress Meter */}
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="text-slate-700 dark:text-slate-300">云存储占用空间情况：</span>
+            <span className="text-slate-900 dark:text-slate-100 font-mono">
+              已用 {usedMB.toFixed(2)} MB / 10240 MB (10 GB) · 剩余 {remainingGB.toFixed(2)} GB ({((remainingGB / 10) * 100).toFixed(1)}%)
+            </span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-sky-500 transition-all duration-500"
+              style={{ width: `${Math.min((usedGB / 10) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Upload Form */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+          <div className="w-full sm:w-40">
+            <select
+              value={fileCategory}
+              onChange={(e) => setFileCategory(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+            >
+              <option value="视频">🎬 视频分类</option>
+              <option value="音乐">🎵 音乐分类</option>
+              <option value="图片">🖼️ 图片分类</option>
+              <option value="文档">📄 文档分类</option>
+              <option value="其他">📦 其他分类</option>
+            </select>
+          </div>
+
+          <label className="cursor-pointer flex-1 w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
+            <UploadCloud className="w-4 h-4" />
+            <span>{uploading ? '正在上传储存中...' : '选择本地文件上传储存至 R2 云盘'}</span>
+            <input type="file" onChange={handleLocalFileUpload} disabled={uploading} className="hidden" />
+          </label>
+        </div>
+
+        {/* Saved Files List */}
+        <div className="space-y-3 pt-1">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+            <HardDrive className="w-4 h-4 text-sky-500" />
+            <span>已保存文件列表 ({cloudFiles.length} 项)</span>
+          </h3>
+
+          {cloudFiles.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2.5">
+              {cloudFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="p-2.5 bg-sky-500/10 text-sky-500 rounded-xl flex-shrink-0">
+                      {file.category === '视频' ? (
+                        <Video className="w-4 h-4" />
+                      ) : file.category === '音乐' ? (
+                        <Music className="w-4 h-4" />
+                      ) : file.category === '图片' ? (
+                        <ImageIcon className="w-4 h-4" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center space-x-2">
+                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+                        <span className="px-2 py-0.5 bg-sky-500/10 text-sky-500 font-extrabold text-[10px] rounded-md">
+                          {file.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 text-[10px] text-slate-400 font-mono">
+                        <span>大小: {(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
+                        <span>上传日期: {file.uploadDate}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions: Download, Preview, Share / Copy Link, Delete */}
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <button
+                      onClick={() => setPreviewFile(file)}
+                      className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>预览</span>
+                    </button>
+
+                    <a
+                      href={file.url}
+                      download={file.name}
+                      className="px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>下载</span>
+                    </a>
+
+                    <button
+                      onClick={() => handleCopyShareLink(file)}
+                      className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
+                    >
+                      {copiedShareId === file.id ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+                      <span>{copiedShareId === file.id ? '已复制链接' : '分享链接'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteCloudFile(file.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                      title="删除文件"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center py-6 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+              暂无已上传储存的文件，可点击上方按钮选择本地文件上传储存
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate pr-4">
+                预览文件: {previewFile.name}
+              </h3>
+              <button
+                onClick={() => setPreviewFile(null)}
+                className="p-1.5 text-slate-400 hover:text-red-500 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-96 overflow-auto flex justify-center items-center p-2 bg-black/5 dark:bg-black/40 rounded-2xl">
+              {previewFile.fileType.startsWith('image/') || previewFile.url.startsWith('data:image/') ? (
+                <img src={previewFile.url} alt={previewFile.name} className="max-h-80 object-contain rounded-xl" />
+              ) : previewFile.fileType.startsWith('video/') || previewFile.url.startsWith('data:video/') ? (
+                <video src={previewFile.url} controls className="max-h-80 w-full rounded-xl" />
+              ) : previewFile.fileType.startsWith('audio/') || previewFile.url.startsWith('data:audio/') ? (
+                <audio src={previewFile.url} controls className="w-full" />
+              ) : (
+                <div className="p-8 text-center space-y-2">
+                  <File className="w-12 h-12 text-slate-400 mx-auto" />
+                  <p className="text-xs text-slate-500">该文件格式不支持在线直接预览，请点击下方下载按钮获取。</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-2">
+              <a
+                href={previewFile.url}
+                download={previewFile.name}
+                className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs shadow flex items-center space-x-1.5"
+              >
+                <Download className="w-4 h-4" />
+                <span>立即下载该文件</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Global Restore Defaults */}
       <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">

@@ -30,8 +30,8 @@ export const DEFAULT_VIDEO_APIS: CmsApiSource[] = [
 ];
 
 export const DEFAULT_ADULT_APIS: CmsApiSource[] = [
-  { id: 'ad_ff', name: '非凡成人专线', url: 'https://cj.ffzyapi.com/api.php/provide/vod', type: 'adult' },
-  { id: 'ad_bf', name: '暴风成人专线', url: 'https://bfzyapi.com/api.php/provide/vod', type: 'adult' },
-  { id: 'ad_lz', name: '量子成人专线', url: 'https://cj.lziapi.com/api.php/provide/vod', type: 'adult' },
-  { id: 'ad_ikun', name: 'iKun 成人专线', url: 'https://ikunzyapi.com/api.php/provide/vod', type: 'adult' },
+  { id: 'ad_sex8', name: '色88资源', url: 'https://cj.c26123.com/api.php/provide/vod', type: 'adult' },
+  { id: 'ad_91zy', name: '91资源', url: 'https://91zy.com/api.php/provide/vod', type: 'adult' },
+  { id: 'ad_ckzy', name: '采花资源', url: 'https://www.caihuazy.com/api.php/provide/vod', type: 'adult' },
+  { id: 'ad_yellow', name: '黄瓜资源', url: 'https://huanggua.com/api.php/provide/vod', type: 'adult' },
 ];
