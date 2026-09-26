@@ -38,7 +38,7 @@ export interface CmsResponse {
   list: VideoItem[];
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 6000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -48,9 +48,11 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
       signal: controller.signal,
     });
     clearTimeout(id);
-    return response;
+    if (response.ok) return response;
+    throw new Error(`Direct fetch returned ${response.status}`);
   } catch (err) {
     clearTimeout(id);
+    // Proxy Fallback to bypass CORS & Network Timeout
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
     return fetch(proxyUrl, options);
   }

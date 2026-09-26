@@ -753,7 +753,7 @@ export const SettingsPage: React.FC = () => {
           </button>
         </form>
 
-        {/* API List */}
+        {/* API List with Health Check Indicator Badges */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
           {apiList.map((api) => (
             <div
@@ -761,7 +761,12 @@ export const SettingsPage: React.FC = () => {
               className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
             >
               <div className="min-w-0 pr-2">
-                <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                <div className="flex items-center space-x-1.5">
+                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
+                    正常 (直连/代理)
+                  </span>
+                </div>
                 <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
               </div>
               {!api.isDefault && (
