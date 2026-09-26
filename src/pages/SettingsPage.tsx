@@ -181,6 +181,8 @@ export const SettingsPage: React.FC = () => {
     localStorage.setItem('wf_r2_account_id', r2AccountId.trim());
     localStorage.setItem('wf_r2_custom_domain', r2CustomDomain.trim());
     localStorage.setItem('wf_r2_egress_gb', r2EgressUsageGB.toString());
+    localStorage.setItem('wf_r2_enabled', 'true');
+    setR2Enabled(true);
     setR2Saved(true);
     setTimeout(() => setR2Saved(false), 2000);
   };
@@ -602,13 +604,14 @@ export const SettingsPage: React.FC = () => {
 
             {/* R2 Connection Verification Status Badge & Redeploy Notice */}
             {(() => {
-              const isConnected = r2Enabled && (r2Bucket.trim().length > 0 || localStorage.getItem('wf_r2_bucket'));
+              const activeBucket = r2Bucket.trim() || localStorage.getItem('wf_r2_bucket');
+              const isConnected = r2Enabled && !!activeBucket;
               if (isConnected) {
                 return (
                   <div className="flex flex-col space-y-1">
                     <div className="px-4 py-2 bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-extrabold flex items-center space-x-1.5 shadow-sm">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                      <span>✅ R2 对象存储接入成功 (绿灯生效中)</span>
+                      <span>✅ Cloudflare R2 对象存储接入成功 (绿灯已连接生效)</span>
                     </div>
                     <span className="text-[10px] text-amber-500 font-medium">
                       注意：若刚在 Cloudflare 控制台绑定 Bucket 变量 (R2_BUCKET)，需在 CF 点击重新部署 (Redeploy) 才能使 Pages Functions 接口完全连接生效。
@@ -619,7 +622,7 @@ export const SettingsPage: React.FC = () => {
               return (
                 <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 rounded-xl text-xs font-semibold flex items-center space-x-1.5">
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  <span>⚠️ R2 暂未接入/未开启 (保存 Bucket 并开启开关后生效)</span>
+                  <span>⚠️ R2 暂未接入/未开启 (填写 Bucket 名称保存后即可自动生效)</span>
                 </div>
               );
             })()}
