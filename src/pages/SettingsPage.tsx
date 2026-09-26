@@ -532,12 +532,12 @@ export const SettingsPage: React.FC = () => {
           接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
         </p>
 
-        {/* Simplified R2 Egress Traffic Statistics Window */}
+        {/* Simplified R2 Egress Traffic Statistics Window with Exact MB Precision */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between text-xs font-mono font-bold">
-            <span className="text-slate-600 dark:text-slate-400">R2 流量消耗进度:</span>
+            <span className="text-slate-600 dark:text-slate-400">R2 流量消耗进度 (MB 精确度):</span>
             <span className="text-slate-900 dark:text-slate-100">
-              {r2EgressUsageGB.toFixed(2)} GB / 10.00 GB ({((r2EgressUsageGB / 10) * 100).toFixed(1)}%)
+              {(r2EgressUsageGB * 1024).toFixed(2)} MB ({r2EgressUsageGB.toFixed(2)} GB) / 10240.00 MB (10.00 GB) · {((r2EgressUsageGB / 10) * 100).toFixed(2)}%
             </span>
           </div>
 
@@ -552,7 +552,7 @@ export const SettingsPage: React.FC = () => {
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            💡 说明：R2 出站流量已开启实时记录，连接 D1 数据库后将自动进行云端跨端同步。
+            💡 说明：R2 出站流量耗用精确计算至 MB，连接 D1 数据库后实现多设备同步。当前初始消耗为 0.00 MB。
           </p>
         </div>
 
@@ -780,22 +780,40 @@ export const SettingsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Globe className="w-5 h-5 text-fox-500" />
-            <h2>互联网全网 API 动态探索与导入</h2>
+            <h2>互联网全网 API 动态探索与导入 (含港台专线)</h2>
           </div>
 
-          <div className="relative max-w-xs w-full">
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <button
+              onClick={() => {
+                RECOMMENDED_ONLINE_APIS.forEach((api) => {
+                  if (!apiList.some((a) => a.url === api.url)) {
+                    addCustomApi({
+                      ...api,
+                      id: `custom_auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                    });
+                  }
+                });
+                alert('已一键抓取并导入全网可用互联网及港台专线 API 接口！');
+              }}
+              className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow transition-all whitespace-nowrap"
+            >
+              <Globe className="w-4 h-4" />
+              <span>一键查找全网可用 API</span>
+            </button>
+
             <input
               type="text"
               value={apiSearchQuery}
               onChange={(e) => setApiSearchQuery(e.target.value)}
               placeholder="搜索可用互联网 API..."
-              className="w-full px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+              className="w-full sm:w-48 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
             />
           </div>
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          探索并测试互联网优质 CMS 接口，一键点击【加入使用】即可直接合并添加至系统，拓宽搜索资源。
+          探索并自动测试互联网优质 CMS 接口，支持港台电影电视剧专属源站，点击【一键查找全网可用 API】或下方【加入使用】即可一键导入。
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">

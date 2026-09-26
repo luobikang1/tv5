@@ -207,68 +207,6 @@ export const SearchPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Internet API Discovery & Quick Addition Section */}
-      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-            <Globe className="w-5 h-5 text-fox-500" />
-            <h2>互联网全网 API 动态探索与导入 (含港台专线)</h2>
-          </div>
-
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <button
-              onClick={handle1ClickFindApis}
-              disabled={isFindingApi}
-              className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow transition-all disabled:opacity-50 whitespace-nowrap"
-            >
-              <Compass className={`w-4 h-4 ${isFindingApi ? 'animate-spin' : ''}`} />
-              <span>一键查找全网可用 API</span>
-            </button>
-
-            <input
-              type="text"
-              value={apiSearchQuery}
-              onChange={(e) => setApiSearchQuery(e.target.value)}
-              placeholder="搜索可用互联网 API..."
-              className="w-full sm:w-48 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
-            />
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          探索并自动测试互联网优质 CMS 接口，支持港台电影电视剧专属源站，点击【一键查找全网可用 API】即可一键导入。
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
-          {discoveredApisFiltered.map((api) => {
-            const isAdded = addedApiIds.includes(api.id) || apiList.some((a) => a.url === api.url);
-            return (
-              <div
-                key={api.id}
-                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs gap-2"
-              >
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
-                </div>
-
-                <button
-                  onClick={() => handleAddDiscoveredApi(api)}
-                  disabled={isAdded}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
-                    isAdded
-                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 cursor-default'
-                      : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
-                  }`}
-                >
-                  {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  <span>{isAdded ? '已加入使用' : '加入使用'}</span>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Search Results Section */}
       {isSearching ? (
