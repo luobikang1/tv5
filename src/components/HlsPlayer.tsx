@@ -146,23 +146,15 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              if (!useProxyFallback) {
-                console.log('Network error, auto-enabling proxy fallback...');
-                setUseProxyFallback(true);
-              } else {
-                hls.startLoad();
-              }
+              hls.startLoad();
+              setErrorText('网络连接超时或存在跨域，可点击下方“启用极速代理”切换线源');
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError();
               break;
             default:
               hls.destroy();
-              if (!useProxyFallback) {
-                setUseProxyFallback(true);
-              } else {
-                setErrorText('视频源响应缓慢或存在跨域阻断，请尝试点击下方“开启代理/重试”');
-              }
+              setErrorText('视频源响应缓慢或格式不兼容，请尝试点击下方“启用极速代理”');
               break;
           }
         }
