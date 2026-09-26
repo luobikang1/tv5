@@ -146,9 +146,17 @@ export const SettingsPage: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
   const [fileCategory, setFileCategory] = useState<string>('视频');
+  const [selectedListCategory, setSelectedListCategory] = useState<string>('全部');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [downloadProgressMap, setDownloadProgressMap] = useState<Record<string, number>>({});
   const [previewFile, setPreviewFile] = useState<StoredCloudFile | null>(null);
   const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+
+  const filteredCloudFiles = cloudFiles.filter((f) => {
+    if (selectedListCategory === '全部') return true;
+    return f.category === selectedListCategory;
+  });
 
   const calculateTotalSizeMB = () => {
     const totalBytes = cloudFiles.reduce((acc, f) => acc + (f.sizeBytes || 0), 0);
@@ -160,50 +168,56 @@ export const SettingsPage: React.FC = () => {
   const usedGB = usedMB / 1024;
   const remainingGB = Math.max(0, totalGB - usedGB);
 
-  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLocalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
+    setUploadProgress(0);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', fileCategory);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', fileCategory);
 
-      const res = await fetch('/api/r2/storage', {
-        method: 'POST',
-        body: formData,
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/r2/storage', true);
 
-      const data = await res.json();
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percent);
+      }
+    };
 
-      if (data.success && data.file) {
-        const newFileItem: StoredCloudFile = data.file;
-        const updated = [newFileItem, ...cloudFiles];
-        setCloudFiles(updated);
-        try {
-          // Store lightweight file metadata list without heavy base64 payloads
-          const metaOnly = updated.map((f) => ({
-            id: f.id,
-            name: f.name,
-            sizeBytes: f.sizeBytes,
-            category: f.category,
-            uploadDate: f.uploadDate,
-            url: f.url,
-            fileType: f.fileType,
-          }));
-          localStorage.setItem('wf_cloud_files', JSON.stringify(metaOnly));
-        } catch (storageErr) {
-          console.warn('LocalStorage quota limit reached for metadata list:', storageErr);
+    xhr.onload = () => {
+      setUploadProgress(100);
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data.success && data.file) {
+          const newFileItem: StoredCloudFile = data.file;
+          const updated = [newFileItem, ...cloudFiles];
+          setCloudFiles(updated);
+          localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+
+          const addedGB = file.size / (1024 * 1024 * 1024);
+          const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
+          setR2EgressUsageGB(newEgressGB);
+          localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
+        } else {
+          const blobUrl = URL.createObjectURL(file);
+          const newFileItem: StoredCloudFile = {
+            id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: file.name,
+            sizeBytes: file.size,
+            category: fileCategory,
+            uploadDate: new Date().toLocaleString(),
+            url: blobUrl,
+            fileType: file.type || 'application/octet-stream',
+          };
+          const updated = [newFileItem, ...cloudFiles];
+          setCloudFiles(updated);
         }
-
-        const addedGB = file.size / (1024 * 1024 * 1024);
-        const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
-        setR2EgressUsageGB(newEgressGB);
-        localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
-      } else {
-        // Fallback for offline dev
+      } catch {
         const blobUrl = URL.createObjectURL(file);
         const newFileItem: StoredCloudFile = {
           id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -216,9 +230,15 @@ export const SettingsPage: React.FC = () => {
         };
         const updated = [newFileItem, ...cloudFiles];
         setCloudFiles(updated);
+      } finally {
+        setTimeout(() => {
+          setUploading(false);
+          setUploadProgress(0);
+        }, 500);
       }
-    } catch (err) {
-      console.warn('R2 upload endpoint error, using blob URL fallback:', err);
+    };
+
+    xhr.onerror = () => {
       const blobUrl = URL.createObjectURL(file);
       const newFileItem: StoredCloudFile = {
         id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -231,9 +251,58 @@ export const SettingsPage: React.FC = () => {
       };
       const updated = [newFileItem, ...cloudFiles];
       setCloudFiles(updated);
-    } finally {
       setUploading(false);
-    }
+      setUploadProgress(0);
+    };
+
+    xhr.send(formData);
+  };
+
+  const handleDownloadFileWithProgress = (file: StoredCloudFile) => {
+    setDownloadProgressMap((prev) => ({ ...prev, [file.id]: 0 }));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', file.url, true);
+    xhr.responseType = 'blob';
+
+    xhr.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setDownloadProgressMap((prev) => ({ ...prev, [file.id]: percent }));
+      }
+    };
+
+    xhr.onload = () => {
+      setDownloadProgressMap((prev) => ({ ...prev, [file.id]: 100 }));
+      const blob = xhr.response;
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(downloadUrl);
+
+      setTimeout(() => {
+        setDownloadProgressMap((prev) => {
+          const copy = { ...prev };
+          delete copy[file.id];
+          return copy;
+        });
+      }, 1000);
+    };
+
+    xhr.onerror = () => {
+      window.open(file.url, '_blank');
+      setDownloadProgressMap((prev) => {
+        const copy = { ...prev };
+        delete copy[file.id];
+        return copy;
+      });
+    };
+
+    xhr.send();
   };
 
   const handleDeleteCloudFile = async (id: string) => {
@@ -1033,53 +1102,100 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Upload Form */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-3">
-          <div className="w-full sm:w-40">
-            <select
-              value={fileCategory}
-              onChange={(e) => setFileCategory(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
-            >
-              <option value="视频">🎬 视频分类</option>
-              <option value="音乐">🎵 音乐分类</option>
-              <option value="图片">🖼️ 图片分类</option>
-              <option value="文档">📄 文档分类</option>
-              <option value="其他">📦 其他分类</option>
-            </select>
+        {/* Upload Form & Admin Only Notice */}
+        {isAdmin ? (
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+            <div className="w-full sm:w-40">
+              <select
+                value={fileCategory}
+                onChange={(e) => setFileCategory(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+              >
+                <option value="视频">🎬 视频分类</option>
+                <option value="音乐">🎵 音乐分类</option>
+                <option value="图片">🖼️ 图片分类</option>
+                <option value="文档">📄 文档分类</option>
+                <option value="其他">📦 其他分类</option>
+              </select>
+            </div>
+
+            <div className="flex-1 w-full space-y-1.5">
+              <label className="cursor-pointer w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
+                <UploadCloud className="w-4 h-4" />
+                <span>{uploading ? `正在上传储存中... ${uploadProgress}%` : '选择本地文件上传储存至 R2 云盘'}</span>
+                <input type="file" onChange={handleLocalFileUpload} disabled={uploading} className="hidden" />
+              </label>
+
+              {uploading && (
+                <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center space-x-2 text-xs text-amber-600 dark:text-amber-400 font-bold">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>⚠️ R2 云存储文件管理及上传储存功能仅限管理员（Admin）使用，请联系管理员或切换管理员账户登录。</span>
+          </div>
+        )}
+
+        {/* Saved Files List & Category Filter Chips */}
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+              <HardDrive className="w-4 h-4 text-sky-500" />
+              <span>已保存文件列表 ({filteredCloudFiles.length} / {cloudFiles.length} 项)</span>
+            </h3>
+
+            {/* Category Filter Chips */}
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {['全部', '视频', '音乐', '图片', '文档', '其他'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedListCategory(cat)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    selectedListCategory === cat
+                      ? 'bg-sky-500 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <label className="cursor-pointer flex-1 w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
-            <UploadCloud className="w-4 h-4" />
-            <span>{uploading ? '正在上传储存中...' : '选择本地文件上传储存至 R2 云盘'}</span>
-            <input type="file" onChange={handleLocalFileUpload} disabled={uploading} className="hidden" />
-          </label>
-        </div>
-
-        {/* Saved Files List */}
-        <div className="space-y-3 pt-1">
-          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
-            <HardDrive className="w-4 h-4 text-sky-500" />
-            <span>已保存文件列表 ({cloudFiles.length} 项)</span>
-          </h3>
-
-          {cloudFiles.length > 0 ? (
+          {filteredCloudFiles.length > 0 ? (
             <div className="grid grid-cols-1 gap-2.5">
-              {cloudFiles.map((file) => (
+              {filteredCloudFiles.map((file) => (
                 <div
                   key={file.id}
                   className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                 >
                   <div className="flex items-center space-x-3 min-w-0">
-                    <div className="p-2.5 bg-sky-500/10 text-sky-500 rounded-xl flex-shrink-0">
-                      {file.category === '视频' ? (
-                        <Video className="w-4 h-4" />
+                    {/* Visual File Content Thumbnail Preview */}
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700/80 overflow-hidden flex items-center justify-center flex-shrink-0 border border-slate-300 dark:border-slate-700">
+                      {file.category === '图片' || file.fileType.startsWith('image/') || file.url.startsWith('data:image/') ? (
+                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                      ) : file.category === '视频' || file.fileType.startsWith('video/') || file.url.startsWith('data:video/') ? (
+                        <div className="relative w-full h-full bg-slate-900 flex items-center justify-center text-sky-400">
+                          <Video className="w-5 h-5" />
+                          <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/60 text-[8px] text-white rounded font-mono">
+                            MP4
+                          </span>
+                        </div>
                       ) : file.category === '音乐' ? (
-                        <Music className="w-4 h-4" />
-                      ) : file.category === '图片' ? (
-                        <ImageIcon className="w-4 h-4" />
+                        <div className="w-full h-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                          <Music className="w-5 h-5" />
+                        </div>
                       ) : (
-                        <FileText className="w-4 h-4" />
+                        <div className="w-full h-full bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                          <FileText className="w-5 h-5" />
+                        </div>
                       )}
                     </div>
 
@@ -1107,14 +1223,17 @@ export const SettingsPage: React.FC = () => {
                       <span>预览</span>
                     </button>
 
-                    <a
-                      href={file.url}
-                      download={file.name}
+                    <button
+                      onClick={() => handleDownloadFileWithProgress(file)}
                       className="px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>下载</span>
-                    </a>
+                      <span>
+                        {downloadProgressMap[file.id] !== undefined
+                          ? `下载 ${downloadProgressMap[file.id]}%`
+                          : '下载'}
+                      </span>
+                    </button>
 
                     <button
                       onClick={() => handleCopyShareLink(file)}
