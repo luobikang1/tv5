@@ -45,6 +45,13 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
 
+  // Video Aspect Ratio & Dimension State for Vertical/Portrait Video Compatibility
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number; isPortrait: boolean }>({
+    width: 0,
+    height: 0,
+    isPortrait: false,
+  });
+
   // Cinema Mode (观影模式) State
   const [isCinemaMode, setIsCinemaMode] = useState<boolean>(false);
 
@@ -92,12 +99,16 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         maxBufferLength: 600, // 10 minutes buffer
         maxMaxBufferLength: 600,
         maxBufferSize: 120 * 1024 * 1024,
-        maxBufferHole: 0.5,
+        maxBufferHole: 0.8, // Enhanced buffer hole tolerance for vertical video
+        nudgeMaxRetry: 8, // Anti-lag retry loop
+        maxStarvationDelay: 4,
         highBufferWatchdogPeriod: 2,
         startFragPrefetch: true,
         testBandwidth: true,
         progressive: true,
         startLevel: -1,
+        fragLoadingTimeOut: 30000,
+        manifestLoadingTimeOut: 30000,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
           const isHttpsPage = window.location.protocol === 'https:';
@@ -260,7 +271,13 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         />
       )}
 
-      <div className="relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border border-slate-800 z-50">
+      <div
+        className={`relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 z-50 transition-all ${
+          videoDimensions.isPortrait
+            ? 'max-h-[75vh] mx-auto aspect-[9/16] max-w-sm'
+            : 'aspect-video'
+        }`}
+      >
         {errorText ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-red-400 p-6 text-center z-10 space-y-3">
             <AlertCircle className="w-12 h-12" />
@@ -278,6 +295,14 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           </div>
         ) : null}
 
+        {/* Dynamic Video Orientation Badge Overlay */}
+        {videoDimensions.width > 0 && (
+          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-mono text-white/90 z-20 border border-white/10 flex items-center space-x-1 pointer-events-none">
+            <span>{videoDimensions.isPortrait ? '📱 竖屏高帧自适应' : '📺 横屏 16:9 画质'}</span>
+            <span className="text-fox-400 font-bold">({videoDimensions.width}x{videoDimensions.height})</span>
+          </div>
+        )}
+
         <video
           ref={videoRef}
           onEnded={onEnded}
@@ -289,6 +314,13 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           }}
           onLoadedMetadata={() => {
             if (videoRef.current) {
+              const w = videoRef.current.videoWidth || 0;
+              const h = videoRef.current.videoHeight || 0;
+              setVideoDimensions({
+                width: w,
+                height: h,
+                isPortrait: h > w && w > 0,
+              });
               setDuration(videoRef.current.duration || 0);
             }
           }}
