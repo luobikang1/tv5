@@ -36,8 +36,12 @@ export interface UserDeviceItem {
 }
 
 export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
+export type AppLanguage = 'zh' | 'en' | 'zh-TW' | 'ja' | 'ko' | 'es';
 
 interface AppContextType {
+  // Language Switcher
+  language: AppLanguage;
+  setLanguage: (lang: AppLanguage) => void;
   // Password & Security
   isUnlocked: boolean;
   verifyPassword: (password: string) => boolean;
@@ -111,6 +115,7 @@ const STORAGE_KEYS = {
   PASSWORD: 'wf_password',
   USER: 'wf_logged_user',
   THEME: 'wf_theme',
+  LANG: 'wf_app_language',
   BG_COLOR: 'wf_custom_bg_color',
   BG_IMAGE: 'wf_custom_bg_image',
   HERO_BG_IMAGE: 'wf_custom_hero_bg_image',
@@ -166,6 +171,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [registeredUsers, setRegisteredUsers] = useState<{ username: string; created_at?: number }[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS_LIST);
     return saved ? JSON.parse(saved) : [{ username: 'admin', created_at: Date.now() }];
+  });
+
+  // Language State
+  const [language, setLanguageState] = useState<AppLanguage>(() => {
+    return (localStorage.getItem(STORAGE_KEYS.LANG) as AppLanguage) || 'zh';
   });
 
   // Theme State (Dark / Light Mode)
@@ -263,10 +273,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (typeof data.r2EgressUsageGB === 'number') {
             localStorage.setItem('wf_r2_egress_gb', data.r2EgressUsageGB.toString());
           }
+          if (Array.isArray(data.cloudFiles)) {
+            localStorage.setItem('wf_cloud_files', JSON.stringify(data.cloudFiles));
+          }
         }
       });
     }
   }, [d1Enabled, currentUser]);
+
+  const setLanguage = (lang: AppLanguage) => {
+    setLanguageState(lang);
+    localStorage.setItem(STORAGE_KEYS.LANG, lang);
+  };
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
@@ -594,6 +612,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const manualSyncD1 = async (): Promise<boolean> => {
     const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
     const r2Usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.00');
+    let cloudFilesSaved = [];
+    try {
+      cloudFilesSaved = JSON.parse(localStorage.getItem('wf_cloud_files') || '[]');
+    } catch {
+      cloudFilesSaved = [];
+    }
     return await syncToD1(syncKey, {
       history: historyList,
       favorites: favoritesList,
@@ -602,6 +626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bgImage: customBgImage,
       heroBgImage: customHeroBgImage,
       r2EgressUsageGB: r2Usage,
+      cloudFiles: cloudFilesSaved,
     });
   };
 
@@ -640,6 +665,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeDevice,
         removeUser,
         refreshUsersAndDevices,
+        language,
+        setLanguage,
         isDarkMode,
         toggleDarkMode,
         customBgColor,

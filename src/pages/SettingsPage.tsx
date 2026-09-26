@@ -72,6 +72,8 @@ export const SettingsPage: React.FC = () => {
     currentUser,
     isAdmin,
     logout,
+    language,
+    setLanguage,
     customBgColor,
     setCustomBgColor,
     customBgImage,
@@ -583,6 +585,40 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* International Language Switcher Section */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+          <Globe className="w-5 h-5 text-fox-500" />
+          <h2>国际主流语言切换 (International Language Switcher)</h2>
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          支持国际主流多语言一键切换，包含中文简体、繁体、英语、日语、韩语与西班牙语。
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-2">
+          {[
+            { code: 'zh', name: '简体中文' },
+            { code: 'zh-TW', name: '繁體中文' },
+            { code: 'en', name: 'English' },
+            { code: 'ja', name: '日本語' },
+            { code: 'ko', name: '한국어' },
+            { code: 'es', name: 'Español' },
+          ].map((item) => (
+            <button
+              key={item.code}
+              onClick={() => setLanguage(item.code as any)}
+              className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
+                language === item.code
+                  ? 'bg-fox-500 text-white border-fox-500 shadow-md scale-105'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* Homepage & Hero Banner Background Customization */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
@@ -1257,8 +1293,8 @@ export const SettingsPage: React.FC = () => {
 
         {isCloudStorageOpen && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Beijing Time Notice & Free Storage Space Progress Meter */}
-            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+            {/* Beijing Time Notice & Free Storage Space Progress Meter & D1 Sync Notice */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold gap-1">
                 <span className="text-slate-700 dark:text-slate-300">
                   云存储占用空间情况 <span className="text-[11px] text-sky-500 font-medium">（文件上传时间统一显示为北京时间 UTC+8）</span>：
@@ -1272,6 +1308,10 @@ export const SettingsPage: React.FC = () => {
                   className="h-full bg-sky-500 transition-all duration-500"
                   style={{ width: `${Math.min((usedGB / 10) * 100, 100)}%` }}
                 />
+              </div>
+              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1.5">
+                <Database className="w-4 h-4 flex-shrink-0" />
+                <span>💡 说明：开启 Cloudflare D1 数据库后，R2 云盘存储的所有文件与分类目录将自动实现多设备云端无缝同步。</span>
               </div>
             </div>
 

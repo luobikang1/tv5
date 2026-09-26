@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Sun, Moon, Search, History, Download, Settings, Lock, LogOut, User, Heart } from 'lucide-react';
+import { Sun, Moon, Search, History, Download, Settings, Lock, LogOut, User, Heart, Globe } from 'lucide-react';
+import { AppLanguage } from '../context/AppContext';
 
 export const Navbar: React.FC = () => {
-  const { isDarkMode, toggleDarkMode, currentPassword, currentUser, logout } = useApp();
+  const { isDarkMode, toggleDarkMode, currentPassword, currentUser, logout, language, setLanguage } = useApp();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -110,6 +111,24 @@ export const Navbar: React.FC = () => {
                 <span>{currentUser}</span>
               </div>
             )}
+
+            {/* International Language Switcher Dropdown */}
+            <div className="relative flex items-center">
+              <Globe className="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-2 pointer-events-none" />
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as AppLanguage)}
+                className="pl-7 pr-2 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-fox-500 cursor-pointer"
+                title="切换语言 / Language"
+              >
+                <option value="zh">简体中文</option>
+                <option value="zh-TW">繁體中文</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="es">Español</option>
+              </select>
+            </div>
 
             <button
               onClick={toggleDarkMode}
