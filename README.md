@@ -1,4 +1,4 @@
-更多详细介绍参考议题留言# 🦊 白狐5 (WhiteFox 5) - 极速影视聚合平台
+# 🦊 白狐5 (WhiteFox 5) - 极速影视聚合平台
 
 白狐5 是一款轻量、极速、高颜值的全网影视聚合播放平台。采用 React 18 + Vite + TypeScript + Tailwind CSS 开发，专为流畅看片与极速响应打造。
 
@@ -6,20 +6,30 @@
 
 ## 🌟 核心特性
 
-- 🔒 **多重登录与流量保护面板**：
-  - 支持**全局访问密码登录**、**账号密码登录**与**新用户注册**。
-  - 能够防止未授权人员刷量，有效避免云平台部署流量浪费。
-  - 提供**一键退出登录**与面板锁定功能。
-- ⚡ **卡顿与缓冲解决三大技术**：
-  1. **Nginx 代理缓存 / Cloudflare Worker 代理**：支持服务器端与 Worker 代理反查，解除跨域限制（CORS）与源站响应慢问题。
-  2. **预加载 + 预连接**：在 HTML/HLS 标签加入 `preconnect` 及 `dns-prefetch`，提前建连源站域名。
-  3. **多码率自适应切换 (低至 360P)**：内置低至 360P 流畅码率选项，弱网环境自动切至低码率，实现秒播无卡顿。
-- 🌐 **二十条互联网可用 API + 成人视频专栏**：默认自动配置 20 条优质 CMS 接口，支持全站集合搜索，且支持在设置中自动加载互联网成人影片 API 专栏。
-- 🎨 **白天/夜间模式切换**：支持一键切换深色/浅色主题。
-- 🕒 **播放历史与清除功能**：自动记录播放进度，支持单条记录删除及一键清空历史。
-- ⏬ **下载与内嵌播放**：播放页提供集数直链复制与下载页功能，下载页可直接粘贴 M3U8 在线测试与预览播放。
-- ☁️ **Cloudflare D1 数据库同步与注册认证**：支持调用 Cloudflare D1 数据库实时注册、登录与同步用户设置及观看历史。
-- 🖼️ **省流海报图与防盗链解决**：采用 SVG 高清省流占位图与图片代理 routing，彻底解决海报加载失败或破损问题。
+- 🔒 **面板保护与密码访问**：
+  - 面板名称为 **白狐5**。支持**全局访问密码**解锁、**账号密码登录**与**新用户注册**。
+  - 必须有密码才能打开，可防止未授权刷量，有效避免云平台部署流量浪费。
+- ⚡ **流畅看片三大防卡顿技术**：
+  1. **Nginx 代理缓存**：内置 Nginx 反向代理与 HTTP chunked 缓存配置，彻底解决源站响应慢与跨域阻断（CORS）。
+  2. **预加载 + 预连接**：HTML 页面嵌入 `preconnect` 和 `dns-prefetch` 标头提前对源站建立连接，并在播放器中启用 preload metadata 提升加载速度。
+  3. **多码率自适应 (默认 360P)**：动态解析 HLS 码率流，支持低至 360P 视频画质调节，弱网环境秒播不卡顿。
+- 🌐 **二十条互联网可用 API + 成人视频专栏**：
+  - 自动配置 20 条优质 CMS 视频接口，支持设置中添加/重置自定义 API。
+  - 包含成人影片专栏模式，可一键切换开启并自动加载互联网成人影片 API。
+- 🔍 **全站集合搜索与聚合搜索**：
+  - 支持对 20+ 内置接口进行全网并发集合搜索，并提供全网中英文视频与 YouTube 引擎在线嵌入播放。
+- 🎨 **白天/夜间模式切换 & 恢复默认设置**：
+  - 支持一键切换深色/浅色主题及自定义背景颜色调色盘。
+  - 设置页面提供一键【恢复默认设置】功能，瞬间恢复初始出厂配置。
+- 🕒 **播放历史管理**：
+  - 自动记录观看进度与集数，支持历史记录单条独立删除与一键清空所有历史。
+- ⏬ **下载中心与播放页增强**：
+  - 播放页提供【复制集数直链】下载选项与专属【下载中心】；下载页支持 M3U8 在线播放测试与卫视直播。
+  - 播放页提供【返回上一页】与【返回主界面】双重便捷按键，并支持【上一集/下一集】一键切换。
+- ☁️ **Cloudflare D1 数据库同步**：
+  - 支持调用 Cloudflare D1 数据库实时同步用户设置、登录注册及观看历史记录。
+- 🖼️ **省流海报图**：
+  - 采用轻量 SVG 省流占位图与图片代理机制，彻底解决源站海报图破损或不显示的问题。
 
 ---
 
@@ -41,46 +51,6 @@
 
 ---
 
-## 🚀 部署指南
-
-### 1. Cloudflare Pages 部署 (推荐，零成本)
-
-#### 方案 A：GitHub 自动关联部署（最简便）
-1. 将本项目代码 Fork 或 Push 到你的 **GitHub** 仓库。
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
-3. 选择 `whitefox5` 仓库，配置构建参数：
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 点击 **Save and Deploy** 即可完成部署！
-5. **设置 API / D1 同步与注册**：
-   - 在 Cloudflare Pages 项目设置中 -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
-   - 打开白狐5面板，支持注册与登录，所有用户数据自动离线或在线存入 D1 数据库。
-
----
-
-### 2. Vercel 一键部署
-
-1. 在 Vercel 导入 GitHub 仓库：
-2. **Build Command**: `npm run build`
-3. **Output Directory**: `dist`
-4. 环境变量中添加 `PASSWORD`（可选）。
-5. 本项目已内置 `vercel.json` 规则，部署完成后系统路由与 `/api/proxy` 函数将自动生效。
-
----
-
-### 3. Docker & Docker-Compose 部署
-
-本项目已提供支持 **Nginx 代理缓存 (Anti-Lag)** 的 Dockerfile 及 docker-compose 配置文件。
-
-```bash
-# 拉取源码并启动 Docker 容器
-docker-compose up -d --build
-```
-启动后访问 `http://你的服务器IP:8080` 即可。
-
----
-
 ## 🛠️ 主要依赖
 
 ```text
@@ -97,7 +67,53 @@ docker-compose up -d --build
 
 ---
 
-## ⚙️ 恢复默认设置与退出登录
+## 🚀 部署指南 (支持多种平台/拉取与上传部署)
 
-- 点击右上角或设置页面中的 **【退出登录】** 按钮即可登出当前账号。
-- 如需重置配置，可进入【系统设置】-> 点击【恢复默认设置】按钮，系统将自动重置 API 接口列表、删除本地历史并还原出厂配置。
+### 1. Cloudflare Pages 部署 (推荐，零成本)
+
+#### 方式 A：GitHub 关联部署（拉取部署）
+1. 将本项目 Fork 或 Push 到你的 **GitHub** 仓库。
+2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) -> 点击 **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
+3. 选择 `whitefox5` 仓库，配置构建参数：
+   - **Framework preset**: `Vite`
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+4. 点击 **Save and Deploy** 即可完成部署！
+
+#### 方式 B：静态文件直接上传部署（上传部署）
+1. 本地运行 `npm run build` 生成 `dist` 静态输出文件夹。
+2. 在 Cloudflare Dashboard -> **Workers & Pages** -> **Create application** -> **Pages** -> 选择 **Upload assets**。
+3. 将 `dist` 文件夹或压缩后的 `.zip` 文件拖拽上传即可完成一键上线！
+
+#### 绑定 Cloudflare D1 数据库实现同步：
+1. 在 Pages 项目设置中 -> **Settings** -> **Functions** -> **D1 database bindings** -> 绑定名为 `DB` 的 D1 数据库。
+2. 在设置中开启 D1 同步后，用户注册、登录及观看历史将自动云端同步。
+
+---
+
+### 2. Vercel 一键部署
+
+1. 在 Vercel 控制台导入 GitHub 仓库：
+2. **Build Command**: `npm run build`
+3. **Output Directory**: `dist`
+4. 环境变量中添加 `PASSWORD`（可选）。
+5. 本项目已内置 `vercel.json` 规则，部署完成后系统路由与 `/api/proxy` 函数将自动生效。
+
+---
+
+### 3. Docker & Docker-Compose 部署
+
+本项目提供包含了 **Nginx 代理缓存 (Anti-Lag)** 的 Docker 部署配置文件：
+
+```bash
+# 拉取源码并启动 Docker 容器
+docker-compose up -d --build
+```
+启动后访问 `http://你的服务器IP:8080` 即可。
+
+---
+
+## ⚙️ 恢复默认设置与面板解锁
+
+- 访问白狐5面板时，系统将校验设置的访问密码。
+- 如需清空自定接口或本地历史，进入【系统设置】-> 点击【恢复默认设置】按钮即可重置。

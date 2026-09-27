@@ -129,19 +129,29 @@ export const PlayerPage: React.FC = () => {
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => {
-            if (window.history.length > 1) {
-              navigate(-1);
-            } else {
-              navigate('/');
-            }
-          }}
-          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm flex items-center space-x-2 transition-colors shadow-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>返回上一页 / 首页</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }}
+            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm flex items-center space-x-2 transition-colors shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>返回上一页</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl font-medium text-sm flex items-center space-x-2 transition-colors shadow-sm shadow-fox-500/20"
+          >
+            <Home className="w-4 h-4" />
+            <span>返回主界面</span>
+          </button>
+        </div>
 
         <div className="flex items-center space-x-2">
           <Link
