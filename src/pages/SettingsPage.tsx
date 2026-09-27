@@ -153,8 +153,15 @@ export const SettingsPage: React.FC = () => {
     return parseFloat(localStorage.getItem('wf_r2_transcode_mb') || '12.85');
   });
 
-  // Local File Upload & R2 Cloud Storage Manager State
-  const [isCloudStorageOpen, setIsCloudStorageOpen] = useState<boolean>(true);
+  // Collapsible Sections Management State for All Settings Sections
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
   const [cloudFiles, setCloudFiles] = useState<StoredCloudFile[]>(() => {
     const saved = localStorage.getItem('wf_cloud_files');
     return saved ? JSON.parse(saved) : [];
@@ -588,315 +595,242 @@ export const SettingsPage: React.FC = () => {
 
       {/* International Language Switcher Section */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-          <Globe className="w-5 h-5 text-fox-500" />
-          <h2>国际主流语言切换 (International Language Switcher)</h2>
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Globe className="w-5 h-5 text-fox-500" />
+            <h2>国际主流语言切换 (International Language Switcher)</h2>
+          </div>
+          <button
+            onClick={() => toggleSection('lang')}
+            className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+          >
+            {collapsedSections['lang'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            <span>{collapsedSections['lang'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+          </button>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          支持国际主流多语言一键切换，包含中文简体、繁体、英语、日语、韩语与西班牙语。
-        </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-2">
-          {[
-            { code: 'zh', name: '简体中文' },
-            { code: 'zh-TW', name: '繁體中文' },
-            { code: 'en', name: 'English' },
-            { code: 'ja', name: '日本語' },
-            { code: 'ko', name: '한국어' },
-            { code: 'es', name: 'Español' },
-          ].map((item) => (
-            <button
-              key={item.code}
-              onClick={() => setLanguage(item.code as any)}
-              className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
-                language === item.code
-                  ? 'bg-fox-500 text-white border-fox-500 shadow-md scale-105'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {item.name}
-            </button>
-          ))}
-        </div>
+        {!collapsedSections['lang'] && (
+          <div className="space-y-3 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              支持国际主流多语言一键切换，包含中文简体、繁体、英语、日语、韩语与西班牙语。
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-2">
+              {[
+                { code: 'zh', name: '简体中文' },
+                { code: 'zh-TW', name: '繁體中文' },
+                { code: 'en', name: 'English' },
+                { code: 'ja', name: '日本語' },
+                { code: 'ko', name: '한국어' },
+                { code: 'es', name: 'Español' },
+              ].map((item) => (
+                <button
+                  key={item.code}
+                  onClick={() => setLanguage(item.code as any)}
+                  className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
+                    language === item.code
+                      ? 'bg-fox-500 text-white border-fox-500 shadow-md scale-105'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Homepage & Hero Banner Background Customization */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-          <Palette className="w-5 h-5 text-fox-500" />
-          <h2>背景颜色与首页介绍选项区照片壁纸自定义</h2>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-2">
-          {/* Custom Color Selector */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全局背景颜色</label>
-            <div className="flex items-center space-x-3">
-              <input
-                type="color"
-                value={customBgColor || '#0f172a'}
-                onChange={(e) => setCustomBgColor(e.target.value)}
-                className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent"
-              />
-              <span className="text-xs font-mono text-slate-600 dark:text-slate-400 truncate">
-                {customBgColor || '默认样式'}
-              </span>
-            </div>
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Palette className="w-5 h-5 text-fox-500" />
+            <h2>背景颜色与首页介绍选项区照片壁纸自定义</h2>
           </div>
-
-          {/* Custom Full-page Image Upload */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全站背景照片</label>
-            <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold shadow transition-all">
-              <ImageIcon className="w-4 h-4" />
-              <span>上传全站照片</span>
-              <input type="file" accept="image/*" onChange={handleGlobalBgImageUpload} className="hidden" />
-            </label>
-          </div>
-
-          {/* Custom Hero Banner Photo Upload */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">首页介绍区照片</label>
-            <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
-              <Sparkles className="w-4 h-4" />
-              <span>上传介绍区照片</span>
-              <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
-            </label>
-          </div>
-        </div>
-
-        {(customBgColor || customBgImage || customHeroBgImage) && (
           <button
-            onClick={clearCustomBg}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+            onClick={() => toggleSection('bg')}
+            className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
           >
-            重置所有背景为系统默认
+            {collapsedSections['bg'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            <span>{collapsedSections['bg'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
           </button>
+        </div>
+
+        {!collapsedSections['bg'] && (
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-2">
+              {/* Custom Color Selector */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全局背景颜色</label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={customBgColor || '#0f172a'}
+                    onChange={(e) => setCustomBgColor(e.target.value)}
+                    className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent"
+                  />
+                  <span className="text-xs font-mono text-slate-600 dark:text-slate-400 truncate">
+                    {customBgColor || '默认样式'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Custom Full-page Image Upload */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全站背景照片</label>
+                <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold shadow transition-all">
+                  <ImageIcon className="w-4 h-4" />
+                  <span>上传全站照片</span>
+                  <input type="file" accept="image/*" onChange={handleGlobalBgImageUpload} className="hidden" />
+                </label>
+              </div>
+
+              {/* Custom Hero Banner Photo Upload */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">首页介绍区照片</label>
+                <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+                  <Sparkles className="w-4 h-4" />
+                  <span>上传介绍区照片</span>
+                  <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
+                </label>
+              </div>
+            </div>
+
+            {(customBgColor || customBgImage || customHeroBgImage) && (
+              <button
+                onClick={clearCustomBg}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+              >
+                重置所有背景为系统默认
+              </button>
+            )}
+          </div>
         )}
       </section>
 
       {/* Access Password & Account Management */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Lock className="w-5 h-5 text-fox-500" />
             <h2>白狐5 密码保护与 30 天免登录持久会话</h2>
           </div>
 
-          <button
-            onClick={logout}
-            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>退出当前账号 / 锁定</span>
-          </button>
-        </div>
-
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          如不主动点击退出，登录后将在<b>一月内保持登入解锁状态</b>（免重复输入密码）。点击下方“保存密码设置”可直接无刷新更新系统独立访问密码。
-        </p>
-
-        <form onSubmit={handleSavePassword} className="space-y-4 max-w-md pt-1">
-          <div className="relative">
-            <input
-              type={showPass ? 'text' : 'password'}
-              value={newPasswordInput}
-              onChange={(e) => setNewPasswordInput(e.target.value)}
-              placeholder="请输入独立访问密码 (留空取消密码)"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 pr-12 text-sm"
-            />
+          <div className="flex items-center space-x-2">
             <button
-              type="button"
-              onClick={() => setShowPass(!showPass)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              onClick={logout}
+              className="px-3.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors"
             >
-              {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              <LogOut className="w-4 h-4" />
+              <span>锁定/退出</span>
+            </button>
+            <button
+              onClick={() => toggleSection('pass')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['pass'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['pass'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
             </button>
           </div>
-
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs shadow-md shadow-fox-500/20 flex items-center space-x-2 transition-all"
-          >
-            {passSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : null}
-            <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
-          </button>
-        </form>
-      </section>
-
-      {/* Device Session Management & Registered Users Section */}
-      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-            <Smartphone className="w-5 h-5 text-fox-500" />
-            <h2>已连接设备与注册用户列表管理</h2>
-          </div>
-
-          <button
-            onClick={refreshUsersAndDevices}
-            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>刷新云端用户与设备列表</span>
-          </button>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          管理员（当前身份: <span className="font-bold text-fox-500">{currentUser || '全局管理员'}</span>）可查看与管理所有在线使用设备及已注册账户；注册用户可查看使用设备与注册人员名录。
-        </p>
+        {!collapsedSections['pass'] && (
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              如不主动点击退出，登录后将在<b>一月内保持登入解锁状态</b>（免重复输入密码）。点击下方“保存密码设置”可直接无刷新更新系统独立访问密码。
+            </p>
 
-        {/* Device Management Directory */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
-            <Smartphone className="w-4 h-4 text-sky-500" />
-            <span>当前已接入使用设备名录 ({devicesList.length} 台)</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {devicesList.map((dev) => (
-              <div
-                key={dev.id}
-                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-2 text-xs"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{dev.deviceName}</span>
-                    {dev.isCurrent && (
-                      <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-md">
-                        当前设备
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-1">关联用户: {dev.username}</p>
-                  <p className="text-[10px] text-slate-400 truncate flex items-center space-x-1 mt-0.5">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    <span>活跃时间: {new Date(dev.lastActive).toLocaleString()}</span>
-                  </p>
-                </div>
-
-                {isAdmin && !dev.isCurrent && (
-                  <button
-                    onClick={() => removeDevice(dev.id)}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors flex-shrink-0"
-                    title="移除该设备"
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                )}
+            <form onSubmit={handleSavePassword} className="space-y-4 max-w-md pt-1">
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="请输入独立访问密码 (留空取消密码)"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 pr-12 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Registered Users Directory */}
-        <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
-            <Users className="w-4 h-4 text-emerald-500" />
-            <span>注册账户列表 ({registeredUsers.length} 位)</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {registeredUsers.map((u) => (
-              <div
-                key={u.username}
-                className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs shadow-md shadow-fox-500/20 flex items-center space-x-2 transition-all"
               >
-                <div className="flex items-center space-x-2 min-w-0">
-                  <div className="p-2 bg-fox-100 dark:bg-fox-950 text-fox-500 rounded-xl">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{u.username}</p>
-                    <p className="text-[10px] text-slate-400">注册成员</p>
-                  </div>
-                </div>
-
-                {isAdmin && u.username !== 'admin' && u.username !== currentUser && (
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`确定要移除注册用户 ${u.username} 吗？`)) {
-                        removeUser(u.username);
-                      }
-                    }}
-                    className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                    title="移除注册账户"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
+                {passSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : null}
+                <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
+              </button>
+            </form>
           </div>
-        </div>
+        )}
       </section>
 
-      {/* Default Video Quality Selection */}
-      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-          <Radio className="w-5 h-5 text-fox-500" />
-          <h2>默认播放分辨率调节 (低至 360P)</h2>
-        </div>
-
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          设定进入播放页时的默认画质选项，针对低网速环境优化，默认为 360P 流畅模式。
-        </p>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-xl">
-          {(['360', '480', '720', '1080', 'auto'] as VideoQuality[]).map((q) => (
-            <button
-              key={q}
-              onClick={() => setDefaultResolution(q)}
-              className={`py-3 px-4 rounded-2xl text-xs font-bold transition-all border ${
-                defaultResolution === q
-                  ? 'bg-fox-500 text-white border-fox-500 shadow-lg shadow-fox-500/25 scale-105'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {q === 'auto' ? '自动 (Auto)' : `${q}P`}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch */}
+      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch & Status Indicator Light */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Cloud className="w-5 h-5 text-sky-500" />
-            <h2>Cloudflare R2 对象存储配置</h2>
+            <h2>Cloudflare R2 对象存储配置与接入状态</h2>
           </div>
 
           <div className="flex items-center space-x-3">
-            {r2EgressUsageGB >= 10 && (
-              <div className="px-3 py-1 bg-red-500/15 border border-red-500/30 text-red-500 rounded-full text-xs font-extrabold flex items-center space-x-1 animate-pulse">
-                <AlertTriangle className="w-4 h-4" />
-                <span>超过 10GB 免费流量出口预警 ⚠️</span>
-              </div>
-            )}
+            {/* Status Indicator Light */}
+            {(() => {
+              const activeBucket = r2Bucket.trim() || localStorage.getItem('wf_r2_bucket');
+              const isConnected = r2Enabled && !!activeBucket;
+              return (
+                <div
+                  className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm ${
+                    isConnected
+                      ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span>{isConnected ? '🟢 接入成功 (绿灯生效中)' : '🔴 未连接 (红灯)'}</span>
+                </div>
+              );
+            })()}
 
-            {/* Toggle switch for R2 (Admin Only) */}
-            <label className={`relative inline-flex items-center ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
-              <input
-                type="checkbox"
-                checked={r2Enabled}
-                disabled={!isAdmin}
-                onChange={(e) => isAdmin && handleToggleR2(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
-            </label>
-            {!isAdmin && (
-              <span className="text-[10px] text-amber-500 font-bold">（仅限管理员可操作）</span>
-            )}
+            {/* Section Collapse Toggle */}
+            <button
+              onClick={() => toggleSection('r2')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['r2'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['r2'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            </button>
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
-        </p>
+        {!collapsedSections['r2'] && (
+          <div className="space-y-5 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                接入 Cloudflare R2 对象存储可实现媒体切片转码与代理缓存，增强跨域流媒体与画质防卡顿能力。每月提供 10GB 零费用出口流量，（初始 0.0 GB），超过 10GB 系统将<b>自动关闭 R2 代理，且不进行自动开启</b>。
+              </p>
+
+              <label className={`relative inline-flex items-center ${isAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                <input
+                  type="checkbox"
+                  checked={r2Enabled}
+                  disabled={!isAdmin}
+                  onChange={(e) => isAdmin && handleToggleR2(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+              </label>
+            </div>
 
         {/* Simplified R2 Egress Traffic Statistics Window with Exact MB Precision */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
@@ -1039,77 +973,108 @@ export const SettingsPage: React.FC = () => {
             })()}
           </div>
         </form>
+          </div>
+        )}
       </section>
 
       {/* Cloudflare D1 Synchronization */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Database className="w-5 h-5 text-fox-500" />
             <h2>Cloudflare D1 数据库实时同步</h2>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={d1Enabled}
-              onChange={(e) => setD1Enabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fox-500"></div>
-          </label>
+
+          <div className="flex items-center space-x-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={d1Enabled}
+                onChange={(e) => setD1Enabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-fox-500"></div>
+            </label>
+
+            <button
+              onClick={() => toggleSection('d1')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['d1'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['d1'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            </button>
+          </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          部署在 Cloudflare Pages 绑定 D1 数据库（绑定名: DB）后，可自动实时同步播放历史进度（300+条）、追剧收藏与用户自定义设置。
-        </p>
+        {!collapsedSections['d1'] && (
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              部署在 Cloudflare Pages 绑定 D1 数据库（绑定名: DB）后，可自动实时同步播放历史进度（300+条）、追剧收藏与用户自定义设置。
+            </p>
 
-        <div className="flex flex-wrap items-center gap-4 pt-2">
-          <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
-            <HistoryIcon className="w-4 h-4 text-fox-500" />
-            <span>历史记录: {historyList.length} 条</span>
-          </div>
-          <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
-            <Heart className="w-4 h-4 text-slate-400 fill-current" />
-            <span>追剧收藏: {favoritesList.length} 项</span>
-          </div>
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 shadow transition-all disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            <span>测试并同步 Cloudflare D1</span>
-          </button>
-        </div>
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                <HistoryIcon className="w-4 h-4 text-fox-500" />
+                <span>历史记录: {historyList.length} 条</span>
+              </div>
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                <Heart className="w-4 h-4 text-slate-400 fill-current" />
+                <span>追剧收藏: {favoritesList.length} 项</span>
+              </div>
+              <button
+                onClick={handleManualSync}
+                disabled={syncing}
+                className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 shadow transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                <span>测试并同步 Cloudflare D1</span>
+              </button>
+            </div>
 
-        {syncMsg && <p className="text-xs font-semibold text-fox-500 pt-1">{syncMsg}</p>}
+            {syncMsg && <p className="text-xs font-semibold text-fox-500 pt-1">{syncMsg}</p>}
+          </div>
+        )}
       </section>
 
       {/* Adult Section Toggle */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Shield className="w-5 h-5 text-amber-500" />
             <h2>成人影片专区模式</h2>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showAdultColumn}
-              onChange={(e) => setShowAdultColumn(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-          </label>
+
+          <div className="flex items-center space-x-3">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showAdultColumn}
+                onChange={(e) => setShowAdultColumn(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+
+            <button
+              onClick={() => toggleSection('adult')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['adult'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['adult'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          开启后主页将自动注入互联网成人视频 CMS 接口并在首页展示成人专区。
-        </p>
+
+        {!collapsedSections['adult'] && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 animate-fadeIn">
+            开启后主页将自动注入互联网成人视频 CMS 接口并在首页展示成人专区。
+          </p>
+        )}
       </section>
 
       {/* 1. Built-in & Custom API Source Manager with 1-Click Update Button */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-3">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               内置与自定义 API 接口管理 ({apiList.length} 个)
@@ -1125,78 +1090,92 @@ export const SettingsPage: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={resetDefaultApis}
-            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors self-start sm:self-auto"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>重置为默认 20 条 API</span>
-          </button>
-        </div>
-
-        {updateMsg && <p className="text-xs font-bold text-emerald-500">{updateMsg}</p>}
-
-        {/* Add API Form */}
-        <form
-          onSubmit={handleAddApi}
-          className="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"
-        >
-          <input
-            type="text"
-            value={newApiName}
-            onChange={(e) => setNewApiName(e.target.value)}
-            placeholder="接口名称 (如: 极速资源)"
-            className="sm:col-span-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
-          />
-          <input
-            type="text"
-            value={newApiUrl}
-            onChange={(e) => setNewApiUrl(e.target.value)}
-            placeholder="接口 URL (如: https://.../provide/vod)"
-            className="sm:col-span-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2.5 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-1 shadow-md shadow-fox-500/20"
-          >
-            <Plus className="w-4 h-4" />
-            <span>添加接口</span>
-          </button>
-        </form>
-
-        {/* API List with Health Check Indicator Badges */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
-          {apiList.map((api) => (
-            <div
-              key={api.id}
-              className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={resetDefaultApis}
+              className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
             >
-              <div className="min-w-0 pr-2">
-                <div className="flex items-center space-x-1.5">
-                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
-                    正常 (直连/代理)
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
-              </div>
-              {!api.isDefault && (
-                <button
-                  onClick={() => removeCustomApi(api.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                  title="删除此接口"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          ))}
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>重置默认</span>
+            </button>
+
+            <button
+              onClick={() => toggleSection('apis')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['apis'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['apis'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            </button>
+          </div>
         </div>
+
+        {!collapsedSections['apis'] && (
+          <div className="space-y-6 animate-fadeIn">
+            {updateMsg && <p className="text-xs font-bold text-emerald-500">{updateMsg}</p>}
+
+            {/* Add API Form */}
+            <form
+              onSubmit={handleAddApi}
+              className="grid grid-cols-1 sm:grid-cols-5 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"
+            >
+              <input
+                type="text"
+                value={newApiName}
+                onChange={(e) => setNewApiName(e.target.value)}
+                placeholder="接口名称 (如: 极速资源)"
+                className="sm:col-span-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+              />
+              <input
+                type="text"
+                value={newApiUrl}
+                onChange={(e) => setNewApiUrl(e.target.value)}
+                placeholder="接口 URL (如: https://.../provide/vod)"
+                className="sm:col-span-2 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2.5 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-1 shadow-md shadow-fox-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>添加接口</span>
+              </button>
+            </form>
+
+            {/* API List with Health Check Indicator Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 scrollbar-thin">
+              {apiList.map((api) => (
+                <div
+                  key={api.id}
+                  className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="flex items-center space-x-1.5">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-bold">
+                        正常 (直连/代理)
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
+                  </div>
+                  {!api.isDefault && (
+                    <button
+                      onClick={() => removeCustomApi(api.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                      title="删除此接口"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 2. Internet API Discovery section placed directly below Built-in Manager */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Globe className="w-5 h-5 text-fox-500" />
             <h2>互联网全网 API 动态探索与导入 (含港台专线)</h2>
@@ -1215,55 +1194,69 @@ export const SettingsPage: React.FC = () => {
                 });
                 alert('已一键抓取并导入全网可用互联网及港台专线 API 接口！');
               }}
-              className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow transition-all whitespace-nowrap"
+              className="px-3.5 py-1.5 bg-fox-500 hover:bg-fox-600 text-white text-xs font-bold rounded-xl flex items-center space-x-1 shadow transition-all whitespace-nowrap"
             >
-              <Globe className="w-4 h-4" />
-              <span>一键查找全网可用 API</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span>一键查找全网 API</span>
             </button>
 
-            <input
-              type="text"
-              value={apiSearchQuery}
-              onChange={(e) => setApiSearchQuery(e.target.value)}
-              placeholder="搜索可用互联网 API..."
-              className="w-full sm:w-48 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
-            />
+            <button
+              onClick={() => toggleSection('discovery')}
+              className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+            >
+              {collapsedSections['discovery'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['discovery'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            </button>
           </div>
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          探索并自动测试互联网优质 CMS 接口，支持港台电影电视剧专属源站，点击【一键查找全网可用 API】或下方【加入使用】即可一键导入。
-        </p>
+        {!collapsedSections['discovery'] && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="flex justify-end">
+              <input
+                type="text"
+                value={apiSearchQuery}
+                onChange={(e) => setApiSearchQuery(e.target.value)}
+                placeholder="搜索可用互联网 API..."
+                className="w-full sm:w-48 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500"
+              />
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
-          {discoveredApisFiltered.map((api) => {
-            const isAdded = addedApiIds.includes(api.id) || apiList.some((a) => a.url === api.url);
-            return (
-              <div
-                key={api.id}
-                className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs gap-2"
-              >
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
-                </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              探索并自动测试互联网优质 CMS 接口，支持港台电影电视剧专属源站，点击【一键查找全网可用 API】或下方【加入使用】即可一键导入。
+            </p>
 
-                <button
-                  onClick={() => handleAddDiscoveredApi(api)}
-                  disabled={isAdded}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
-                    isAdded
-                      ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 cursor-default'
-                      : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
-                  }`}
-                >
-                  {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  <span>{isAdded ? '已加入使用' : '加入使用'}</span>
-                </button>
-              </div>
-            );
-          })}
-        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+              {discoveredApisFiltered.map((api) => {
+                const isAdded = addedApiIds.includes(api.id) || apiList.some((a) => a.url === api.url);
+                return (
+                  <div
+                    key={api.id}
+                    className="p-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{api.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{api.url}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddDiscoveredApi(api)}
+                      disabled={isAdded}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1 flex-shrink-0 transition-all ${
+                        isAdded
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 cursor-default'
+                          : 'bg-fox-500 hover:bg-fox-600 text-white shadow-md shadow-fox-500/20'
+                      }`}
+                    >
+                      {isAdded ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                      <span>{isAdded ? '已加入使用' : '加入使用'}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* R2 Cloud Local File Upload & Storage Manager (设置底部 - 可收纳功能 & 全员可用) */}
@@ -1282,16 +1275,16 @@ export const SettingsPage: React.FC = () => {
 
             {/* Collapsible Panel Section Toggle Button */}
             <button
-              onClick={() => setIsCloudStorageOpen(!isCloudStorageOpen)}
+              onClick={() => toggleSection('storage')}
               className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
             >
-              {isCloudStorageOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              <span>{isCloudStorageOpen ? '收起云盘界面 ▲' : '展开云盘界面 ▼'}</span>
+              {collapsedSections['storage'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              <span>{collapsedSections['storage'] ? '展开云盘界面 ▼' : '收起云盘界面 ▲'}</span>
             </button>
           </div>
         </div>
 
-        {isCloudStorageOpen && (
+        {!collapsedSections['storage'] && (
           <div className="space-y-6 animate-fadeIn">
             {/* Beijing Time Notice & Free Storage Space Progress Meter & D1 Sync Notice */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
@@ -1663,21 +1656,35 @@ export const SettingsPage: React.FC = () => {
 
       {/* Global Restore Defaults */}
       <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
-        <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。
-        </p>
-        <button
-          onClick={() => {
-            if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
-              restoreDefaultSettings();
-              alert('恢复出厂设置成功！');
-            }
-          }}
-          className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
-        >
-          恢复默认设置
-        </button>
+        <div className="flex items-center justify-between border-b border-red-500/10 pb-3">
+          <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
+          <button
+            onClick={() => toggleSection('restore')}
+            className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+          >
+            {collapsedSections['restore'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            <span>{collapsedSections['restore'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+          </button>
+        </div>
+
+        {!collapsedSections['restore'] && (
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。
+            </p>
+            <button
+              onClick={() => {
+                if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
+                  restoreDefaultSettings();
+                  alert('恢复出厂设置成功！');
+                }
+              }}
+              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
+            >
+              恢复默认设置
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
