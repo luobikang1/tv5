@@ -1430,125 +1430,138 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               {filteredCloudFiles.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2.5">
+                /* 3-Column Large Card Grid Layout (并排三个大图样式) */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {filteredCloudFiles.map((file) => {
                     const isSelected = selectedFileIds.includes(file.id);
                     return (
                       <div
                         key={file.id}
-                        className={`p-3.5 bg-slate-50 dark:bg-slate-800/50 border rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-all ${
+                        className={`bg-slate-50 dark:bg-slate-800/60 border rounded-2xl overflow-hidden flex flex-col justify-between text-xs transition-all shadow-md group hover:shadow-xl ${
                           isSelected
-                            ? 'border-sky-500 ring-2 ring-sky-500/20 dark:bg-sky-950/20'
+                            ? 'border-sky-500 ring-2 ring-sky-500/30 bg-sky-50/50 dark:bg-sky-950/30'
                             : 'border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        <div className="flex items-center space-x-3 min-w-0">
-                          {/* Checkbox */}
+                        {/* Card Large Media Preview Header Area (h-40) */}
+                        <div className="relative w-full h-40 bg-slate-900 overflow-hidden flex items-center justify-center">
+                          {/* Checkbox overlay in top left */}
                           <button
                             onClick={() => handleToggleSelectFile(file.id)}
-                            className="p-1 hover:text-sky-500 transition-colors flex-shrink-0"
+                            className="absolute top-2.5 left-2.5 z-20 p-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors"
+                            title={isSelected ? '取消选择' : '勾选选择'}
                           >
                             {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-sky-500" />
+                              <CheckSquare className="w-4 h-4 text-sky-400" />
                             ) : (
-                              <Square className="w-4 h-4 text-slate-400" />
+                              <Square className="w-4 h-4 text-slate-300" />
                             )}
                           </button>
 
-                          {/* Visual File Content Thumbnail Preview */}
-                          <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700/80 overflow-hidden flex items-center justify-center flex-shrink-0 border border-slate-300 dark:border-slate-700">
-                            {file.category === '图片' || file.fileType.startsWith('image/') || file.url.startsWith('data:image/') ? (
-                              <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
-                            ) : file.category === '视频' || file.fileType.startsWith('video/') || file.url.startsWith('data:video/') ? (
-                              <div className="relative w-full h-full bg-slate-900 flex items-center justify-center text-sky-400">
-                                <Video className="w-5 h-5" />
-                                <span className="absolute bottom-0.5 right-0.5 px-1 bg-black/60 text-[8px] text-white rounded font-mono">
-                                  MP4
-                                </span>
-                              </div>
-                            ) : file.category === '音乐' ? (
-                              <div className="w-full h-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                <Music className="w-5 h-5" />
-                              </div>
-                            ) : (
-                              <div className="w-full h-full bg-sky-500/10 text-sky-500 flex items-center justify-center">
-                                <FileText className="w-5 h-5" />
-                              </div>
-                            )}
+                          {/* Category Badge overlay in top right */}
+                          <div className="absolute top-2.5 right-2.5 z-20">
+                            <select
+                              value={file.category}
+                              onChange={(e) => handleSingleMoveCategory(file.id, e.target.value)}
+                              className="px-2 py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[10px] rounded-xl focus:outline-none cursor-pointer"
+                            >
+                              <option value="视频">🎬 视频</option>
+                              <option value="音乐">🎵 音乐</option>
+                              <option value="图片">🖼️ 图片</option>
+                              <option value="文档">📄 文档</option>
+                              <option value="其他">📦 其他</option>
+                            </select>
                           </div>
 
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center space-x-2">
-                              <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
-                              {/* Inline Category Change Selector */}
-                              <select
-                                value={file.category}
-                                onChange={(e) => handleSingleMoveCategory(file.id, e.target.value)}
-                                className="px-2 py-0.5 bg-sky-500/10 text-sky-500 border border-sky-500/20 font-extrabold text-[10px] rounded-md focus:outline-none cursor-pointer"
-                              >
-                                <option value="视频">视频</option>
-                                <option value="音乐">音乐</option>
-                                <option value="图片">图片</option>
-                                <option value="文档">文档</option>
-                                <option value="其他">其他</option>
-                              </select>
+                          {/* Content Thumbnail Preview */}
+                          {file.category === '图片' || file.fileType.startsWith('image/') || file.url.startsWith('data:image/') ? (
+                            <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          ) : file.category === '视频' || file.fileType.startsWith('video/') || file.url.startsWith('data:video/') ? (
+                            <div className="relative w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
+                              <Video className="w-10 h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono rounded-md">
+                                MP4 媒体视频
+                              </span>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-mono">
-                              <span>大小: {(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
-                              <span className="text-slate-500 dark:text-slate-400">上传时间: {file.uploadDate}</span>
+                          ) : file.category === '音乐' ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 bg-gradient-to-br from-amber-950/40 to-slate-950">
+                              <Music className="w-10 h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono rounded-md">
+                                音频原声
+                              </span>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
+                              <FileText className="w-10 h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-mono rounded-md">
+                                云盘文件
+                              </span>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Actions: Download, Rename, Preview, Share / Copy Link, Delete */}
-                        <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => {
-                              setRenameModalFile(file);
-                              setRenameInput(file.name);
-                            }}
-                            className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
-                            title="重命名该文件"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>重命名</span>
-                          </button>
+                        {/* Card Details Body */}
+                        <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                          <div className="space-y-1">
+                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs" title={file.name}>
+                              {file.name}
+                            </p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                              <span>大小: {(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
+                              <span className="truncate max-w-[110px]" title={file.uploadDate}>{file.uploadDate}</span>
+                            </div>
+                          </div>
 
-                          <button
-                            onClick={() => setPreviewFile(file)}
-                            className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>预览</span>
-                          </button>
+                          {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete) */}
+                          <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-1 text-[11px]">
+                            <button
+                              onClick={() => setPreviewFile(file)}
+                              className="p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="在线预览"
+                            >
+                              <Eye className="w-3.5 h-3.5 mb-0.5" />
+                              <span>预览</span>
+                            </button>
 
-                          <button
-                            onClick={() => handleDownloadFileWithProgress(file)}
-                            className="px-2.5 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>
-                              {downloadProgressMap[file.id] !== undefined
-                                ? `下载 ${downloadProgressMap[file.id]}%`
-                                : '下载'}
-                            </span>
-                          </button>
+                            <button
+                              onClick={() => handleDownloadFileWithProgress(file)}
+                              className="p-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="极速下载"
+                            >
+                              <Download className="w-3.5 h-3.5 mb-0.5" />
+                              <span>{downloadProgressMap[file.id] !== undefined ? `${downloadProgressMap[file.id]}%` : '下载'}</span>
+                            </button>
 
-                          <button
-                            onClick={() => handleCopyShareLink(file)}
-                            className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
-                          >
-                            {copiedShareId === file.id ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
-                            <span>{copiedShareId === file.id ? '已复制链接' : '分享'}</span>
-                          </button>
+                            <button
+                              onClick={() => handleCopyShareLink(file)}
+                              className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="分享外链"
+                            >
+                              {copiedShareId === file.id ? <CheckCircle2 className="w-3.5 h-3.5 mb-0.5" /> : <Share2 className="w-3.5 h-3.5 mb-0.5" />}
+                              <span>{copiedShareId === file.id ? '已复制' : '分享'}</span>
+                            </button>
 
-                          <button
-                            onClick={() => handleDeleteCloudFile(file.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                            title="删除文件"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setRenameModalFile(file);
+                                setRenameInput(file.name);
+                              }}
+                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="重命名"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 mb-0.5" />
+                              <span>改名</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteCloudFile(file.id)}
+                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="删除文件"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mb-0.5" />
+                              <span>删除</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
