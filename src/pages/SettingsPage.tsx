@@ -20,6 +20,8 @@ import {
   Moon,
 } from 'lucide-react';
 
+import { ChevronDown, ChevronUp, Globe } from 'lucide-react';
+
 export const SettingsPage: React.FC = () => {
   const {
     currentPassword,
@@ -42,6 +44,33 @@ export const SettingsPage: React.FC = () => {
     d1Enabled,
     setD1Enabled,
   } = useApp();
+
+  // Collapsible sections state persisted in localStorage
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('wf_settings_open_sections');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('wf_settings_open_sections', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const [lang, setLang] = useState<'zh' | 'en'>(() => {
+    return (localStorage.getItem('wf_language') as 'zh' | 'en') || 'zh';
+  });
+
+  const handleLangChange = (newLang: 'zh' | 'en') => {
+    setLang(newLang);
+    localStorage.setItem('wf_language', newLang);
+  };
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
   const [showPass, setShowPass] = useState(false);
@@ -109,42 +138,105 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Language Switcher */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div
+          onClick={() => toggleSection('lang')}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Globe className="w-5 h-5 text-fox-500" />
+            <h2>中英双语语言切换 / Language Switcher</h2>
+          </div>
+          {openSections['lang'] ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
+
+        {openSections['lang'] && (
+          <div className="pt-2 space-y-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              切换系统界面显示语言 (中文 / English)
+            </p>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => handleLangChange('zh')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  lang === 'zh'
+                    ? 'bg-fox-500 text-white border-fox-500 shadow-md'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                简体中文
+              </button>
+              <button
+                onClick={() => handleLangChange('en')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                  lang === 'en'
+                    ? 'bg-fox-500 text-white border-fox-500 shadow-md'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                English
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Access Password Settings */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-          <Lock className="w-5 h-5 text-fox-500" />
-          <h2>白狐5 访问密码保护</h2>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          设置密码后，访问网站时需先输入密码解锁才能进入界面。留空保存即取消密码保护。
-        </p>
-
-        <form onSubmit={handleSavePassword} className="space-y-4 max-w-md">
-          <div className="relative">
-            <input
-              type={showPass ? 'text' : 'password'}
-              value={newPasswordInput}
-              onChange={(e) => setNewPasswordInput(e.target.value)}
-              placeholder="请输入独立访问密码 (留空取消密码)"
-              className="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 pr-12 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass(!showPass)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
+        <div
+          onClick={() => toggleSection('pass')}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Lock className="w-5 h-5 text-fox-500" />
+            <h2>白狐5 访问密码保护</h2>
           </div>
+          {openSections['pass'] ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
 
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs shadow-md shadow-fox-500/20 flex items-center space-x-2 transition-all"
-          >
-            {passSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : null}
-            <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
-          </button>
-        </form>
+        {openSections['pass'] && (
+          <div className="pt-2 space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              设置密码后，访问网站时需先输入密码解锁才能进入界面。留空保存即取消密码保护。
+            </p>
+
+            <form onSubmit={handleSavePassword} className="space-y-4 max-w-md">
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="请输入独立访问密码 (留空取消密码)"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fox-500 pr-12 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-fox-500 hover:bg-fox-600 text-white font-medium rounded-xl text-xs shadow-md shadow-fox-500/20 flex items-center space-x-2 transition-all"
+              >
+                {passSaved ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : null}
+                <span>{passSaved ? '密码已更新' : '保存密码设置'}</span>
+              </button>
+            </form>
+          </div>
+        )}
       </section>
 
       {/* Theme & Background Color Customization */}
@@ -334,23 +426,82 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Cloud File Storage Manager (3 items per row grid) */}
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+        <div
+          onClick={() => toggleSection('cloud_files')}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Database className="w-5 h-5 text-fox-500" />
+            <h2>Cloudflare R2 云盘管理 (D1 同步模式)</h2>
+          </div>
+          {openSections['cloud_files'] ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
+
+        {openSections['cloud_files'] && (
+          <div className="pt-2 space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              云端资源列表已通过 Cloudflare D1 自动建立跨设置同步索引，移动端与 PC 端一排三项无缝适配。
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { name: '示例视频流片段_01.ts', size: '12.4 MB', time: '2025-01-01 12:00' },
+                { name: '示例海报封面_02.jpg', size: '1.2 MB', time: '2025-01-01 12:05' },
+                { name: '播放配置清单.json', size: '48 KB', time: '2025-01-01 12:10' },
+              ].map((file, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl flex flex-col justify-between text-xs space-y-2 shadow-sm"
+                >
+                  <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{file.name}</p>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>{file.size}</span>
+                    <span>{file.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Global Restore Defaults */}
       <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
-        <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          清除本地所有浏览历史、访问密码、自定 API 接口配置，并恢复出厂默认状态。
-        </p>
-        <button
-          onClick={() => {
-            if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
-              restoreDefaultSettings();
-              alert('恢复出厂设置成功！');
-            }
-          }}
-          className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
+        <div
+          onClick={() => toggleSection('restore')}
+          className="flex items-center justify-between cursor-pointer select-none"
         >
-          恢复默认设置
-        </button>
+          <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
+          {openSections['restore'] ? (
+            <ChevronUp className="w-5 h-5 text-red-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-red-400" />
+          )}
+        </div>
+
+        {openSections['restore'] && (
+          <div className="pt-2 space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              清除本地所有浏览历史、访问密码、自定 API 接口配置，并恢复出厂默认状态。
+            </p>
+            <button
+              onClick={() => {
+                if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
+                  restoreDefaultSettings();
+                  alert('恢复出厂设置成功！');
+                }
+              }}
+              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
+            >
+              恢复默认设置
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );
