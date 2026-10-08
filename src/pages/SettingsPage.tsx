@@ -48,7 +48,6 @@ import {
   ChevronUp,
   MessageSquare,
   Send,
-  Image as ImageFileIcon,
   Trash,
   ImageOff,
   FolderPlus,
@@ -128,9 +127,6 @@ export const SettingsPage: React.FC = () => {
     updateNote,
     deleteNote,
     clearNotes,
-    cloudFolders,
-    addFolder,
-    deleteFolder,
     syncR2CloudDrive,
   } = useApp();
 
@@ -145,10 +141,6 @@ export const SettingsPage: React.FC = () => {
   const [r2Syncing, setR2Syncing] = useState(false);
   const [r2SyncStatus, setR2SyncStatus] = useState<'success' | 'syncing' | 'idle' | 'error'>('idle');
   const [r2SyncMsg, setR2SyncMsg] = useState<string | null>(null);
-
-  // New Folder Creation State
-  const [newFolderNameInput, setNewFolderNameInput] = useState('');
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>('all');
 
   // Message Board State
   const [msgInputText, setMsgInputText] = useState('');
@@ -270,9 +262,6 @@ export const SettingsPage: React.FC = () => {
     if (selectedListCategory !== '全部' && f.category !== selectedListCategory) {
       return false;
     }
-    if (selectedFolderFilter !== 'all' && f.folderId !== selectedFolderFilter) {
-      return false;
-    }
     return true;
   });
 
@@ -319,13 +308,6 @@ export const SettingsPage: React.FC = () => {
       setR2SyncStatus('error');
       setR2SyncMsg('⚠️ 同步完成（本地文件已全量可视化展示），请确认 D1 数据库绑定状态');
     }
-  };
-
-  const handleCreateFolder = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderNameInput.trim()) return;
-    addFolder(newFolderNameInput.trim());
-    setNewFolderNameInput('');
   };
 
   const handleSaveNote = (e: React.FormEvent) => {
@@ -1713,95 +1695,29 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* New Folder Creation Section */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
-                  <FolderPlus className="w-4 h-4 text-sky-500" />
-                  <span>新建与删除云盘文件夹 ({cloudFolders.length} 个文件夹)</span>
-                </h3>
-              </div>
-
-              {/* Create Folder Form */}
-              <form onSubmit={handleCreateFolder} className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={newFolderNameInput}
-                  onChange={(e) => setNewFolderNameInput(e.target.value)}
-                  placeholder="请输入新文件夹名称 (如: 港剧高清合集)"
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl shadow flex items-center space-x-1 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>新建文件夹</span>
-                </button>
-              </form>
-
-              {/* Folders List Pills */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  onClick={() => setSelectedFolderFilter('all')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 border ${
-                    selectedFolderFilter === 'all'
-                      ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Folder className="w-3.5 h-3.5" />
-                  <span>全部文件夹</span>
-                </button>
-
-                {cloudFolders.map((folder) => (
-                  <div
-                    key={folder.id}
-                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                      selectedFolderFilter === folder.id
-                        ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <button
-                      onClick={() => setSelectedFolderFilter(folder.id)}
-                      className="flex items-center space-x-1"
-                    >
-                      <Folder className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{folder.name}</span>
-                    </button>
-                    <button
-                      onClick={() => deleteFolder(folder.id)}
-                      className="p-0.5 text-slate-400 hover:text-red-500 transition-colors ml-1"
-                      title="删除此文件夹"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* File Upload Form (Unrestricted - Available for All Users) */}
+            {/* Categorized File Upload Form (选择文件上传到的分类文件夹) */}
             <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-3">
-              <div className="w-full sm:w-40">
+              <div className="w-full sm:w-56">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  选择上传的目标分类文件夹：
+                </label>
                 <select
                   value={fileCategory}
                   onChange={(e) => setFileCategory(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="视频">🎬 视频分类</option>
-                  <option value="音乐">🎵 音乐分类</option>
-                  <option value="图片">🖼️ 图片分类</option>
-                  <option value="文档">📄 文档分类</option>
-                  <option value="其他">📦 其他分类</option>
+                  <option value="视频">🎬 视频分类文件夹</option>
+                  <option value="音乐">🎵 音乐分类文件夹</option>
+                  <option value="图片">🖼️ 图片分类文件夹</option>
+                  <option value="文档">📄 文档分类文件夹</option>
+                  <option value="其他">📦 其他分类文件夹</option>
                 </select>
               </div>
 
-              <div className="flex-1 w-full space-y-1.5">
-                <label className="cursor-pointer w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
+              <div className="flex-1 w-full space-y-1.5 pt-2 sm:pt-0">
+                <label className="cursor-pointer w-full flex items-center justify-center space-x-2 px-5 py-3 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
                   <UploadCloud className="w-4 h-4" />
-                  <span>{uploading ? `正在上传储存中... ${uploadProgress}%` : '选择本地单文件或批量上传储存至 R2 云盘'}</span>
+                  <span>{uploading ? `正在上传至【${fileCategory}分类文件夹】... ${uploadProgress}%` : `选择本地文件上传至【${fileCategory}分类文件夹】`}</span>
                   <input type="file" multiple onChange={handleLocalFileUpload} disabled={uploading} className="hidden" />
                 </label>
 
@@ -1852,11 +1768,11 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => setBatchMoveTargetCategory(e.target.value)}
                       className="bg-transparent text-slate-800 dark:text-slate-200 font-bold focus:outline-none"
                     >
-                      <option value="视频">🎬 视频分类</option>
-                      <option value="音乐">🎵 音乐分类</option>
-                      <option value="图片">🖼️ 图片分类</option>
-                      <option value="文档">📄 文档分类</option>
-                      <option value="其他">📦 其他分类</option>
+                      <option value="视频">🎬 视频分类文件夹</option>
+                      <option value="音乐">🎵 音乐分类文件夹</option>
+                      <option value="图片">🖼️ 图片分类文件夹</option>
+                      <option value="文档">📄 文档分类文件夹</option>
+                      <option value="其他">📦 其他分类文件夹</option>
                     </select>
                     <button
                       onClick={handleBatchMoveCategory}
@@ -1885,7 +1801,7 @@ export const SettingsPage: React.FC = () => {
                   <span>已保存文件列表 ({filteredCloudFiles.length} / {cloudFiles.length} 项)</span>
                 </h3>
 
-              {/* Category Filter Chips & Refresh Full File List Button */}
+              {/* Category Folder Navigation Tabs & Refresh Full File List Button */}
               <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   onClick={fetchAllR2Files}
@@ -1896,17 +1812,24 @@ export const SettingsPage: React.FC = () => {
                   <span>刷新全量 R2 云文件</span>
                 </button>
 
-                  {['全部', '视频', '音乐', '图片', '文档', '其他'].map((cat) => (
+                  {[
+                    { key: '全部', label: '📁 全部文件' },
+                    { key: '视频', label: '🎬 视频文件夹' },
+                    { key: '音乐', label: '🎵 音乐文件夹' },
+                    { key: '图片', label: '🖼️ 图片文件夹' },
+                    { key: '文档', label: '📄 文档文件夹' },
+                    { key: '其他', label: '📦 其他文件夹' },
+                  ].map((cat) => (
                     <button
-                      key={cat}
-                      onClick={() => setSelectedListCategory(cat)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        selectedListCategory === cat
-                          ? 'bg-sky-500 text-white shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      key={cat.key}
+                      onClick={() => setSelectedListCategory(cat.key)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border whitespace-nowrap ${
+                        selectedListCategory === cat.key
+                          ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
                       }`}
                     >
-                      {cat}
+                      {cat.label}
                     </button>
                   ))}
                 </div>
@@ -1941,18 +1864,18 @@ export const SettingsPage: React.FC = () => {
                             )}
                           </button>
 
-                          {/* Category Badge overlay in top right */}
+                            {/* Category Folder Badge overlay in top right */}
                           <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-20">
                             <select
                               value={file.category}
                               onChange={(e) => handleSingleMoveCategory(file.id, e.target.value)}
                               className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[9px] sm:text-[10px] rounded-lg sm:rounded-xl focus:outline-none cursor-pointer"
                             >
-                              <option value="视频">🎬 视频</option>
-                              <option value="音乐">🎵 音乐</option>
-                              <option value="图片">🖼️ 图片</option>
-                              <option value="文档">📄 文档</option>
-                              <option value="其他">📦 其他</option>
+                                <option value="视频">🎬 视频文件夹</option>
+                                <option value="音乐">🎵 音乐文件夹</option>
+                                <option value="图片">🖼️ 图片文件夹</option>
+                                <option value="文档">📄 文档文件夹</option>
+                                <option value="其他">📦 其他文件夹</option>
                             </select>
                           </div>
 
