@@ -108,10 +108,15 @@ interface AppContextType {
   // Global Reset
   restoreDefaultSettings: () => void;
 
-  // Public Showcase Area Shared Files
+  // Public Showcase Area Shared Files & Community Message Board
   publicSharedFiles: any[];
   shareToPublicShowcase: (file: any) => void;
   removeFromPublicShowcase: (fileId: string) => void;
+
+  messagesList: { id: string; username: string; content: string; imageUrl?: string; createdAt: string }[];
+  addMessage: (content: string, imageUrl?: string) => void;
+  deleteMessage: (id: string) => void;
+  deleteMessageImage: (id: string) => void;
 
   // D1 DB
   d1Enabled: boolean;
@@ -254,6 +259,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Message Board State
+  const [messagesList, setMessagesList] = useState<
+    { id: string; username: string; content: string; imageUrl?: string; createdAt: string }[]
+  >(() => {
+    const saved = localStorage.getItem('wf_messages_list');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const addMessage = (content: string, imageUrl?: string) => {
+    if (!content.trim() && !imageUrl) return;
+    const author = currentUser || '匿名访客';
+    const newMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      username: author,
+      content: content.trim(),
+      imageUrl: imageUrl || undefined,
+      createdAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }),
+    };
+
+    setMessagesList((prev) => {
+      const updated = [newMessage, ...prev];
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
+  const deleteMessage = (id: string) => {
+    setMessagesList((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
+  const deleteMessageImage = (id: string) => {
+    setMessagesList((prev) => {
+      const updated = prev.map((m) => (m.id === id ? { ...m, imageUrl: undefined } : m));
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
   const shareToPublicShowcase = (file: any) => {
     setPublicSharedFiles((prev) => {
       if (prev.some((f) => f.id === file.id)) return prev;
@@ -326,8 +382,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             localStorage.setItem('wf_r2_egress_gb', data.r2EgressUsageGB.toString());
           }
           if (Array.isArray(data.cloudFiles)) {
-            localStorage.setItem('wf_cloud_files', JSON.stringify(data.cloudFiles));
+            let localCloudFiles: any[] = [];
+            let deletedIds: string[] = [];
+            try {
+              localCloudFiles = JSON.parse(localStorage.getItem('wf_cloud_files') || '[]');
+              deletedIds = JSON.parse(localStorage.getItem('wf_cloud_files_deleted') || '[]');
+            } catch {
+              localCloudFiles = [];
+              deletedIds = [];
+            }
+
+            // Merge cloud drive files using tombstone filter and union by ID
+            const fileMap = new Map<string, any>();
+            localCloudFiles.forEach((file) => {
+              if (file && file.id && !deletedIds.includes(file.id)) {
+                fileMap.set(file.id, file);
+              }
+            });
+
+            data.cloudFiles.forEach((file: any) => {
+              if (file && file.id && !deletedIds.includes(file.id)) {
+                fileMap.set(file.id, file);
+              }
+            });
+
+            const mergedCloudFiles = Array.from(fileMap.values());
+            localStorage.setItem('wf_cloud_files', JSON.stringify(mergedCloudFiles));
           }
+        }
+      });
+
+      fetchFromD1('wf_messages_board').then((msgs) => {
+        if (Array.isArray(msgs)) {
+          setMessagesList(msgs);
+          localStorage.setItem('wf_messages_list', JSON.stringify(msgs));
         }
       });
     }
@@ -752,6 +840,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         publicSharedFiles,
         shareToPublicShowcase,
         removeFromPublicShowcase,
+        messagesList,
+        addMessage,
+        deleteMessage,
+        deleteMessageImage,
         d1Enabled,
         setD1Enabled,
         manualSyncD1,

@@ -46,6 +46,11 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
+  MessageSquare,
+  Send,
+  Image as ImageFileIcon,
+  Trash,
+  ImageOff,
 } from 'lucide-react';
 
 interface StoredCloudFile {
@@ -108,7 +113,37 @@ export const SettingsPage: React.FC = () => {
     publicSharedFiles,
     shareToPublicShowcase,
     removeFromPublicShowcase,
+    messagesList,
+    addMessage,
+    deleteMessage,
+    deleteMessageImage,
   } = useApp();
+
+  // Message Board State
+  const [msgInputText, setMsgInputText] = useState('');
+  const [msgAttachedImage, setMsgAttachedImage] = useState<string | null>(null);
+
+  const handleMessageImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          setMsgAttachedImage(base64);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSendCommunityMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!msgInputText.trim() && !msgAttachedImage) return;
+    addMessage(msgInputText, msgAttachedImage || undefined);
+    setMsgInputText('');
+    setMsgAttachedImage(null);
+  };
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
   const [showPass, setShowPass] = useState(false);
@@ -377,6 +412,17 @@ export const SettingsPage: React.FC = () => {
       // Ignore quota errors on deletion
     }
 
+    // Record tombstone deletion ID to preserve deletion during multi-device merge sync
+    try {
+      const deletedList: string[] = JSON.parse(localStorage.getItem('wf_cloud_files_deleted') || '[]');
+      if (!deletedList.includes(id)) {
+        const newDeleted = [...deletedList, id];
+        localStorage.setItem('wf_cloud_files_deleted', JSON.stringify(newDeleted));
+      }
+    } catch {
+      // ignore
+    }
+
     try {
       await fetch(`/api/r2/storage?key=${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -432,6 +478,14 @@ export const SettingsPage: React.FC = () => {
     setCloudFiles(updated);
     setSelectedFileIds([]);
     localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+
+    try {
+      const deletedList: string[] = JSON.parse(localStorage.getItem('wf_cloud_files_deleted') || '[]');
+      const newDeleted = Array.from(new Set([...deletedList, ...idsToDelete]));
+      localStorage.setItem('wf_cloud_files_deleted', JSON.stringify(newDeleted));
+    } catch {
+      // ignore
+    }
 
     for (const id of idsToDelete) {
       try {
@@ -662,7 +716,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Palette className="w-5 h-5 text-fox-500" />
-            <h2>背景颜色与首页介绍选项区照片壁纸自定义</h2>
+            <h2>主题调色与全局背景自定义</h2>
           </div>
           <button
             onClick={() => toggleSection('bg')}
@@ -676,13 +730,49 @@ export const SettingsPage: React.FC = () => {
         {isExpanded('bg') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
+              您可以选择预设主题调色按键，或自定义全局背景颜色、全局背景壁纸，也可单独上传首页介绍区的背景壁纸。
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-2">
+            {/* Theme Preset Color Selector Buttons */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-sky-500" />
+                <span>主题调色按键 (一键快速配色)</span>
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { name: '🔷 经典蓝绿', color: '#0284c7' },
+                  { name: '🦊 白狐橙红', color: '#ea580c' },
+                  { name: '🌌 深邃极夜', color: '#0f172a' },
+                  { name: '🌿 清爽翡翠', color: '#059669' },
+                  { name: '🍇 雅致紫罗兰', color: '#7c3aed' },
+                  { name: '🌸 樱花粉黛', color: '#be185d' },
+                  { name: '💎 极简亮白', color: '#f8fafc' },
+                ].map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => setCustomBgColor(preset.color)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 border transition-all shadow-sm hover:scale-105 ${
+                      customBgColor === preset.color
+                        ? 'ring-2 ring-fox-500 scale-105 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-extrabold'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border shadow-inner inline-block"
+                      style={{ backgroundColor: preset.color }}
+                    />
+                    <span>{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-1">
               {/* Custom Color Selector */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全局背景颜色</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">自定义背景调色板</label>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
@@ -1417,7 +1507,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <UploadCloud className="w-6 h-6 text-sky-500" />
-            <h2>R2 本地文件上传与云盘存储中心</h2>
+            <h2>R2云盘</h2>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -1745,103 +1835,152 @@ export const SettingsPage: React.FC = () => {
       </section>
       )}
 
-      {/* Public Showcase Area (公共展示区 - 全员可见查看与下载) */}
+      {/* Community Message Board Area (留言区 - 全员互动与图片发布) */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-            <Sparkles className="w-6 h-6 text-amber-500" />
-            <h2>全员公共展示区 ({publicSharedFiles.length} 项共享资源)</h2>
+            <MessageSquare className="w-6 h-6 text-sky-500" />
+            <h2>全员留言与交流区 ({messagesList.length} 条留言)</h2>
           </div>
 
           <button
-            onClick={() => toggleSection('public_showcase')}
+            onClick={() => toggleSection('message_board')}
             className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
           >
-            {isExpanded('public_showcase') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            <span>{isExpanded('public_showcase') ? '收起展示区 ▲' : '展开展示区 ▼'}</span>
+            {isExpanded('message_board') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('message_board') ? '收起留言区 ▲' : '展开留言区 ▼'}</span>
           </button>
         </div>
 
-        {isExpanded('public_showcase') && (
-          <div className="space-y-4 animate-fadeIn">
+        {isExpanded('message_board') && (
+          <div className="space-y-6 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              公共展示区包含管理员发布的优质共享文件、影视片段与媒体资源。全员均可免费在线预览与极速下载。
+              欢迎在此留言与分享！您可以发表文字并附带图片，留言全员实时可见。管理员可对留言中的图片进行单项清理以释放空间。
             </p>
 
-            {publicSharedFiles.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {publicSharedFiles.map((file) => (
-                  <div
-                    key={file.id}
-                    className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between text-xs transition-all shadow-md hover:shadow-xl"
-                  >
-                    <div className="relative w-full h-32 bg-slate-900 overflow-hidden flex items-center justify-center">
-                      {file.category === '图片' || file.fileType?.startsWith('image/') || file.url?.startsWith('data:image/') ? (
-                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
-                      ) : file.category === '视频' || file.fileType?.startsWith('video/') || file.url?.startsWith('data:video/') ? (
-                        <div className="flex flex-col items-center justify-center text-sky-400">
-                          <Video className="w-8 h-8" />
-                          <span className="mt-1 text-[10px] font-mono">视频源</span>
-                        </div>
-                      ) : file.category === '音乐' ? (
-                        <div className="flex flex-col items-center justify-center text-amber-400">
-                          <Music className="w-8 h-8" />
-                          <span className="mt-1 text-[10px] font-mono">音频源</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-sky-400">
-                          <FileText className="w-8 h-8" />
-                          <span className="mt-1 text-[10px] font-mono">共享资源</span>
-                        </div>
-                      )}
-                    </div>
+            {/* Message Input Box */}
+            <form onSubmit={handleSendCommunityMessage} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                <User className="w-4 h-4 text-sky-500" />
+                <span>当前发言身份: <span className="text-sky-500">{currentUser || '匿名访客'}</span></span>
+              </div>
 
-                    <div className="p-3 space-y-2 flex-1 flex flex-col justify-between">
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs" title={file.name}>
-                          {file.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          共享时间: {file.sharedAt || file.uploadDate}
-                        </p>
+              <textarea
+                value={msgInputText}
+                onChange={(e) => setMsgInputText(e.target.value)}
+                placeholder="请输入您的留言内容或分享想法..."
+                rows={3}
+                className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none font-medium"
+              />
+
+              {/* Image Preview & Attachment Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex items-center space-x-3">
+                  <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-200/80 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all">
+                    <ImageIcon className="w-4 h-4 text-sky-500" />
+                    <span>{msgAttachedImage ? '更换图片' : '添加配图照片'}</span>
+                    <input type="file" accept="image/*" onChange={handleMessageImageUpload} className="hidden" />
+                  </label>
+
+                  {msgAttachedImage && (
+                    <div className="relative group flex items-center space-x-2">
+                      <img src={msgAttachedImage} alt="配图预览" className="w-10 h-10 object-cover rounded-lg border border-sky-500" />
+                      <button
+                        type="button"
+                        onClick={() => setMsgAttachedImage(null)}
+                        className="p-1 text-red-500 hover:bg-red-500/10 rounded-lg text-xs"
+                        title="移除此图片"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!msgInputText.trim() && !msgAttachedImage}
+                  className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>发布留言</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Messages Display List */}
+            <div className="space-y-3">
+              {messagesList.length > 0 ? (
+                messagesList.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2.5 transition-all shadow-sm hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between text-xs border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center space-x-1">
+                          <User className="w-3.5 h-3.5 text-sky-500" />
+                          <span>{msg.username}</span>
+                        </span>
+                        {msg.username === 'admin' && (
+                          <span className="px-1.5 py-0.5 bg-fox-500/10 text-fox-500 text-[10px] font-extrabold rounded">
+                            管理员
+                          </span>
+                        )}
                       </div>
 
-                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1 text-[11px]">
-                        <button
-                          onClick={() => setPreviewFile(file)}
-                          className="px-3 py-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex items-center space-x-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>预览</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleDownloadFileWithProgress(file)}
-                          className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold flex items-center space-x-1 shadow"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>下载</span>
-                        </button>
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{msg.createdAt}</span>
 
                         {isAdmin && (
                           <button
-                            onClick={() => removeFromPublicShowcase(file.id)}
-                            className="px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold"
-                            title="从展示区移除"
+                            onClick={() => deleteMessage(msg.id)}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors ml-1"
+                            title="管理员删除整条留言"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                     </div>
+
+                    {/* Message Content Text */}
+                    {msg.content && (
+                      <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-medium leading-relaxed">
+                        {msg.content}
+                      </p>
+                    )}
+
+                    {/* Message Image Attachment */}
+                    {msg.imageUrl && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="relative inline-block max-w-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/10">
+                          <img src={msg.imageUrl} alt="留言附图" className="max-h-60 object-contain rounded-xl" />
+                        </div>
+
+                        {/* Admin Image Deletion Control to Save Space */}
+                        {isAdmin && (
+                          <div>
+                            <button
+                              onClick={() => deleteMessageImage(msg.id)}
+                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition-colors"
+                            >
+                              <ImageOff className="w-3.5 h-3.5 text-amber-500" />
+                              <span>管理员仅删除配图 (释放储存空间)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                公共展示区暂未发布共享资源（管理员可在 R2 云盘选择文件点击“展示”发布至此区）
-              </p>
-            )}
+                ))
+              ) : (
+                <p className="text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                  留言板暂无留言，抢先发表第一条留言吧！
+                </p>
+              )}
+            </div>
           </div>
         )}
       </section>
