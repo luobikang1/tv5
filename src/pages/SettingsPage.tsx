@@ -95,7 +95,6 @@ export const SettingsPage: React.FC = () => {
     resetDefaultApis,
     showAdultColumn,
     setShowAdultColumn,
-    restoreDefaultSettings,
     d1Enabled,
     setD1Enabled,
     manualSyncD1,
@@ -106,6 +105,9 @@ export const SettingsPage: React.FC = () => {
     removeDevice,
     removeUser,
     refreshUsersAndDevices,
+    publicSharedFiles,
+    shareToPublicShowcase,
+    removeFromPublicShowcase,
   } = useApp();
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
@@ -857,7 +859,72 @@ export const SettingsPage: React.FC = () => {
         )}
       </section>
 
-      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch & Status Indicator Light */}
+      {/* Admin Only Registered Users Directory */}
+      {isAdmin && (
+        <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+              <Users className="w-5 h-5 text-fox-500" />
+              <h2>已注册用户管理列表 (管理员专属)</h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={refreshUsersAndDevices}
+                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>刷新用户</span>
+              </button>
+              <button
+                onClick={() => toggleSection('users')}
+                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+              >
+                {isExpanded('users') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <span>{isExpanded('users') ? '收起界面 ▲' : '展开界面 ▼'}</span>
+              </button>
+            </div>
+          </div>
+
+          {isExpanded('users') && (
+            <div className="space-y-3 animate-fadeIn">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                查看全站已注册账号信息，可管理与移除违规用户。
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                {registeredUsers.map((u) => (
+                  <div
+                    key={u.username}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center space-x-2 truncate">
+                      <User className="w-4 h-4 text-fox-500 flex-shrink-0" />
+                      <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{u.username}</span>
+                      {u.username === 'admin' && (
+                        <span className="px-1.5 py-0.5 bg-fox-500/10 text-fox-500 text-[10px] font-extrabold rounded">
+                          管理员
+                        </span>
+                      )}
+                    </div>
+                    {u.username !== 'admin' && (
+                      <button
+                        onClick={() => removeUser(u.username)}
+                        className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                        title="删除用户"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch & Status Indicator Light (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -1058,8 +1125,10 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </section>
+      )}
 
-      {/* Cloudflare D1 Synchronization */}
+      {/* Cloudflare D1 Synchronization (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -1117,6 +1186,7 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </section>
+      )}
 
       {/* Adult Section Toggle */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
@@ -1341,7 +1411,8 @@ export const SettingsPage: React.FC = () => {
         )}
       </section>
 
-      {/* R2 Cloud Local File Upload & Storage Manager (设置底部 - 可收纳功能 & 全员可用) */}
+      {/* R2 Cloud Local File Upload & Storage Manager (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -1599,8 +1670,8 @@ export const SettingsPage: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete) */}
-                          <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-0.5 sm:gap-1 text-[9px] sm:text-[11px]">
+                          {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete, Share to Public Showcase) */}
+                          <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-6 gap-0.5 sm:gap-1 text-[9px] sm:text-[11px]">
                             <button
                               onClick={() => setPreviewFile(file)}
                               className="p-1 sm:p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
@@ -1626,6 +1697,15 @@ export const SettingsPage: React.FC = () => {
                             >
                               {copiedShareId === file.id ? <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                               <span className="hidden sm:inline mt-0.5">{copiedShareId === file.id ? '已复制' : '分享'}</span>
+                            </button>
+
+                            <button
+                              onClick={() => shareToPublicShowcase(file)}
+                              className="p-1 sm:p-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="一键分享至公共展示区"
+                            >
+                              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">展示</span>
                             </button>
 
                             <button
@@ -1660,6 +1740,108 @@ export const SettingsPage: React.FC = () => {
                 </p>
               )}
             </div>
+          </div>
+        )}
+      </section>
+      )}
+
+      {/* Public Showcase Area (公共展示区 - 全员可见查看与下载) */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <Sparkles className="w-6 h-6 text-amber-500" />
+            <h2>全员公共展示区 ({publicSharedFiles.length} 项共享资源)</h2>
+          </div>
+
+          <button
+            onClick={() => toggleSection('public_showcase')}
+            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
+          >
+            {isExpanded('public_showcase') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('public_showcase') ? '收起展示区 ▲' : '展开展示区 ▼'}</span>
+          </button>
+        </div>
+
+        {isExpanded('public_showcase') && (
+          <div className="space-y-4 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              公共展示区包含管理员发布的优质共享文件、影视片段与媒体资源。全员均可免费在线预览与极速下载。
+            </p>
+
+            {publicSharedFiles.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {publicSharedFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between text-xs transition-all shadow-md hover:shadow-xl"
+                  >
+                    <div className="relative w-full h-32 bg-slate-900 overflow-hidden flex items-center justify-center">
+                      {file.category === '图片' || file.fileType?.startsWith('image/') || file.url?.startsWith('data:image/') ? (
+                        <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                      ) : file.category === '视频' || file.fileType?.startsWith('video/') || file.url?.startsWith('data:video/') ? (
+                        <div className="flex flex-col items-center justify-center text-sky-400">
+                          <Video className="w-8 h-8" />
+                          <span className="mt-1 text-[10px] font-mono">视频源</span>
+                        </div>
+                      ) : file.category === '音乐' ? (
+                        <div className="flex flex-col items-center justify-center text-amber-400">
+                          <Music className="w-8 h-8" />
+                          <span className="mt-1 text-[10px] font-mono">音频源</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-sky-400">
+                          <FileText className="w-8 h-8" />
+                          <span className="mt-1 text-[10px] font-mono">共享资源</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 space-y-2 flex-1 flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs" title={file.name}>
+                          {file.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          共享时间: {file.sharedAt || file.uploadDate}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1 text-[11px]">
+                        <button
+                          onClick={() => setPreviewFile(file)}
+                          className="px-3 py-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex items-center space-x-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>预览</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDownloadFileWithProgress(file)}
+                          className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold flex items-center space-x-1 shadow"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>下载</span>
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => removeFromPublicShowcase(file.id)}
+                            className="px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold"
+                            title="从展示区移除"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                公共展示区暂未发布共享资源（管理员可在 R2 云盘选择文件点击“展示”发布至此区）
+              </p>
+            )}
           </div>
         )}
       </section>
@@ -1754,38 +1936,6 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Global Restore Defaults */}
-      <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
-        <div className="flex items-center justify-between border-b border-red-500/10 pb-3">
-          <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
-          <button
-            onClick={() => toggleSection('restore')}
-            className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-          >
-            {isExpanded('restore') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            <span>{isExpanded('restore') ? '收起界面 ▲' : '展开界面 ▼'}</span>
-          </button>
-        </div>
-
-        {isExpanded('restore') && (
-          <div className="space-y-4 animate-fadeIn">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。
-            </p>
-            <button
-              onClick={() => {
-                if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
-                  restoreDefaultSettings();
-                  alert('恢复出厂设置成功！');
-                }
-              }}
-              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
-            >
-              恢复默认设置
-            </button>
-          </div>
-        )}
-      </section>
     </div>
   );
 };

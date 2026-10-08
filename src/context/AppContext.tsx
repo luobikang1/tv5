@@ -108,6 +108,11 @@ interface AppContextType {
   // Global Reset
   restoreDefaultSettings: () => void;
 
+  // Public Showcase Area Shared Files
+  publicSharedFiles: any[];
+  shareToPublicShowcase: (file: any) => void;
+  removeFromPublicShowcase: (fileId: string) => void;
+
   // D1 DB
   d1Enabled: boolean;
   setD1Enabled: (enabled: boolean) => void;
@@ -242,6 +247,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(STORAGE_KEYS.HISTORY);
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Public Showcase Shared Files State
+  const [publicSharedFiles, setPublicSharedFiles] = useState<any[]>(() => {
+    const saved = localStorage.getItem('wf_public_shared_files');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const shareToPublicShowcase = (file: any) => {
+    setPublicSharedFiles((prev) => {
+      if (prev.some((f) => f.id === file.id)) return prev;
+      const updated = [{ ...file, sharedAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) }, ...prev];
+      localStorage.setItem('wf_public_shared_files', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromPublicShowcase = (fileId: string) => {
+    setPublicSharedFiles((prev) => {
+      const updated = prev.filter((f) => f.id !== fileId);
+      localStorage.setItem('wf_public_shared_files', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Favorites State
   const [favoritesList, setFavoritesList] = useState<FavoriteItem[]>(() => {
@@ -721,6 +749,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFavorite,
         clearFavorites,
         restoreDefaultSettings,
+        publicSharedFiles,
+        shareToPublicShowcase,
+        removeFromPublicShowcase,
         d1Enabled,
         setD1Enabled,
         manualSyncD1,
