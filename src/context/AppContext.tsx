@@ -36,7 +36,7 @@ export interface UserDeviceItem {
 }
 
 export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
-export type AppLanguage = 'zh' | 'en' | 'zh-TW' | 'ja' | 'ko' | 'es';
+export type AppLanguage = 'zh' | 'en';
 
 interface AppContextType {
   // Language Switcher
@@ -173,9 +173,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [{ username: 'admin', created_at: Date.now() }];
   });
 
-  // Language State
+  // Language State (Chinese-English Bilingual)
   const [language, setLanguageState] = useState<AppLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEYS.LANG) as AppLanguage) || 'zh';
+    const saved = localStorage.getItem(STORAGE_KEYS.LANG);
+    return saved === 'en' ? 'en' : 'zh';
   });
 
   // Theme State (Dark / Light Mode)

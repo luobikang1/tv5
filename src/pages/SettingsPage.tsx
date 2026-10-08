@@ -154,14 +154,26 @@ export const SettingsPage: React.FC = () => {
   });
 
   // Collapsible Sections Management State for All Settings Sections
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  // Default is collapsed for all sections ({})
+  // Opened sections are persisted in localStorage so they stay open on refresh
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('wf_settings_expanded');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const toggleSection = (key: string) => {
-    setCollapsedSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setExpandedSections((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('wf_settings_expanded', JSON.stringify(updated));
+      return updated;
+    });
   };
+
+  const isExpanded = (key: string) => !!expandedSections[key];
   const [cloudFiles, setCloudFiles] = useState<StoredCloudFile[]>(() => {
     const saved = localStorage.getItem('wf_cloud_files');
     return saved ? JSON.parse(saved) : [];
@@ -598,31 +610,27 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Globe className="w-5 h-5 text-fox-500" />
-            <h2>国际主流语言切换 (International Language Switcher)</h2>
+            <h2>中英双语切换 (Language Switcher)</h2>
           </div>
           <button
             onClick={() => toggleSection('lang')}
             className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
           >
-            {collapsedSections['lang'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['lang'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            {isExpanded('lang') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('lang') ? '收起界面 ▲' : '展开界面 ▼'}</span>
           </button>
         </div>
 
-        {!collapsedSections['lang'] && (
+        {isExpanded('lang') && (
           <div className="space-y-3 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              支持国际主流多语言一键切换，包含中文简体、繁体、英语、日语、韩语与西班牙语。
+              支持中文与英文双语一键切换。
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
               {[
                 { code: 'zh', name: '简体中文' },
-                { code: 'zh-TW', name: '繁體中文' },
                 { code: 'en', name: 'English' },
-                { code: 'ja', name: '日本語' },
-                { code: 'ko', name: '한국어' },
-                { code: 'es', name: 'Español' },
               ].map((item) => (
                 <button
                   key={item.code}
@@ -652,12 +660,12 @@ export const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('bg')}
             className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
           >
-            {collapsedSections['bg'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['bg'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            {isExpanded('bg') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('bg') ? '收起界面 ▲' : '展开界面 ▼'}</span>
           </button>
         </div>
 
-        {!collapsedSections['bg'] && (
+        {isExpanded('bg') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
@@ -733,13 +741,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('pass')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['pass'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['pass'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('pass') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('pass') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['pass'] && (
+        {isExpanded('pass') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               如不主动点击退出，登录后将在<b>一月内保持登入解锁状态</b>（免重复输入密码）。点击下方“保存密码设置”可直接无刷新更新系统独立访问密码。
@@ -807,13 +815,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('r2')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['r2'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['r2'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('r2') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('r2') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['r2'] && (
+        {isExpanded('r2') && (
           <div className="space-y-5 animate-fadeIn">
             <div className="flex items-center justify-between">
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1000,13 +1008,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('d1')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['d1'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['d1'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('d1') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('d1') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['d1'] && (
+        {isExpanded('d1') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               部署在 Cloudflare Pages 绑定 D1 数据库（绑定名: DB）后，可自动实时同步播放历史进度（300+条）、追剧收藏与用户自定义设置。
@@ -1059,13 +1067,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('adult')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['adult'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['adult'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('adult') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('adult') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['adult'] && (
+        {isExpanded('adult') && (
           <p className="text-xs text-slate-500 dark:text-slate-400 animate-fadeIn">
             开启后主页将自动注入互联网成人视频 CMS 接口并在首页展示成人专区。
           </p>
@@ -1103,13 +1111,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('apis')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['apis'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['apis'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('apis') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('apis') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['apis'] && (
+        {isExpanded('apis') && (
           <div className="space-y-6 animate-fadeIn">
             {updateMsg && <p className="text-xs font-bold text-emerald-500">{updateMsg}</p>}
 
@@ -1204,13 +1212,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('discovery')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['discovery'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['discovery'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('discovery') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('discovery') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['discovery'] && (
+        {isExpanded('discovery') && (
           <div className="space-y-4 animate-fadeIn">
             <div className="flex justify-end">
               <input
@@ -1278,13 +1286,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('storage')}
               className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
             >
-              {collapsedSections['storage'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['storage'] ? '展开云盘界面 ▼' : '收起云盘界面 ▲'}</span>
+              {isExpanded('storage') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('storage') ? '收起云盘界面 ▲' : '展开云盘界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['storage'] && (
+        {isExpanded('storage') && (
           <div className="space-y-6 animate-fadeIn">
             {/* Beijing Time Notice & Free Storage Space Progress Meter & D1 Sync Notice */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
@@ -1675,12 +1683,12 @@ export const SettingsPage: React.FC = () => {
             onClick={() => toggleSection('restore')}
             className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
           >
-            {collapsedSections['restore'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['restore'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            {isExpanded('restore') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('restore') ? '收起界面 ▲' : '展开界面 ▼'}</span>
           </button>
         </div>
 
-        {!collapsedSections['restore'] && (
+        {isExpanded('restore') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。

@@ -70,7 +70,7 @@ export async function onRequest(context: any) {
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
-    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges, X-R2-Cache');
     responseHeaders.set('Cache-Control', 'public, max-age=86400');
 
     // Store fetched segment into R2 cache when available

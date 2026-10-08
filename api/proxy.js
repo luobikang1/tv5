@@ -1,9 +1,11 @@
 // Vercel Serverless Function for CORS & Video Stream Proxy
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges');
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
     return res.status(204).end();
   }
 
@@ -29,13 +31,16 @@ export default async function handler(req, res) {
       headers: fetchHeaders,
     });
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
 
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);
+
+    const contentRange = response.headers.get('content-range');
+    if (contentRange) res.setHeader('Content-Range', contentRange);
+
+    const acceptRanges = response.headers.get('accept-ranges');
+    if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
 
     const buffer = await response.arrayBuffer();
     return res.status(response.status).send(Buffer.from(buffer));

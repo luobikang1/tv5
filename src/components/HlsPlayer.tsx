@@ -12,9 +12,9 @@ import {
   AlertTriangle,
   Sun,
   Volume1,
-  Tv2,
   Sliders,
   ShieldCheck,
+  Zap,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -35,7 +35,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [currentLevel, setCurrentLevel] = useState<number>(-1);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [useProxyFallback, setUseProxyFallback] = useState(false);
+  const [preloadCacheEnabled, setPreloadCacheEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('wf_preload_cache') !== 'false';
+  });
 
   // Brightness and Volume Slider State
   const [brightness, setBrightness] = useState<number>(100);
@@ -52,9 +54,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     isPortrait: false,
   });
 
-  // Cinema Mode (观影模式) State
-  const [isCinemaMode, setIsCinemaMode] = useState<boolean>(false);
-
   const formatTime = (secs: number) => {
     if (!secs || isNaN(secs)) return '00:00';
     const m = Math.floor(secs / 60);
@@ -62,10 +61,10 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const getPlayableUrl = (rawUrl: string, useProxy: boolean) => {
+  const getPlayableUrl = (rawUrl: string) => {
     let cleanUrl = rawUrl.trim();
     const isHttpsPage = window.location.protocol === 'https:';
-    if ((useProxy || (isHttpsPage && cleanUrl.startsWith('http:'))) && !cleanUrl.includes('/api/proxy')) {
+    if (isHttpsPage && cleanUrl.startsWith('http:') && !cleanUrl.includes('/api/proxy')) {
       return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
     }
     return cleanUrl;
@@ -79,7 +78,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
     video.preload = 'auto';
 
     const cleanUrl = url.trim();
-    const playableUrl = getPlayableUrl(cleanUrl, useProxyFallback);
+    const playableUrl = getPlayableUrl(cleanUrl);
 
     if (playableUrl.includes('.mp4') || playableUrl.includes('.webm')) {
       video.src = playableUrl;
@@ -92,13 +91,17 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         hlsRef.current.destroy();
       }
 
+      const maxBufLen = preloadCacheEnabled ? 180 : 30; // Preload at least 3 minutes (180s) buffer when enabled
+      const maxMaxBufLen = preloadCacheEnabled ? 300 : 60;
+      const maxBufSize = preloadCacheEnabled ? 120 * 1024 * 1024 : 30 * 1024 * 1024;
+
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
         backBufferLength: 180,
-        maxBufferLength: 600, // 10 minutes buffer
-        maxMaxBufferLength: 600,
-        maxBufferSize: 120 * 1024 * 1024,
+        maxBufferLength: maxBufLen,
+        maxMaxBufferLength: maxMaxBufLen,
+        maxBufferSize: maxBufSize,
         maxBufferHole: 0.8, // Enhanced buffer hole tolerance for vertical video
         nudgeMaxRetry: 8, // Anti-lag retry loop
         maxStarvationDelay: 4,
@@ -112,7 +115,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
           const isHttpsPage = window.location.protocol === 'https:';
-          if ((useProxyFallback || (isHttpsPage && requestUrl.startsWith('http:'))) && !requestUrl.includes('/api/proxy')) {
+          if (isHttpsPage && requestUrl.startsWith('http:') && !requestUrl.includes('/api/proxy')) {
             const proxied = `/api/proxy?url=${encodeURIComponent(requestUrl)}`;
             xhr.open('GET', proxied, true);
           }
@@ -158,14 +161,14 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
               hls.startLoad();
-              setErrorText('网络连接超时或存在跨域，可点击下方“启用极速代理”切换线源');
+              setErrorText('网络连接超时，正在自动重新连接线源');
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError();
               break;
             default:
               hls.destroy();
-              setErrorText('视频源响应缓慢或格式不兼容，请尝试点击下方“启用极速代理”');
+              setErrorText('视频源响应缓慢或格式不兼容，请尝试刷新重试');
               break;
           }
         }
@@ -188,7 +191,24 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         hlsRef.current.destroy();
       }
     };
-  }, [url, useProxyFallback, defaultResolution]);
+  }, [url, preloadCacheEnabled, defaultResolution]);
+
+  // Keep pre-buffering video ahead when paused if preload cache is enabled
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePause = () => {
+      if (preloadCacheEnabled && hlsRef.current) {
+        hlsRef.current.startLoad();
+      }
+    };
+
+    video.addEventListener('pause', handlePause);
+    return () => {
+      video.removeEventListener('pause', handlePause);
+    };
+  }, [preloadCacheEnabled]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -262,15 +282,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   };
 
   return (
-    <div className={`space-y-4 ${isCinemaMode ? 'relative z-50 p-4 bg-slate-950/95 rounded-3xl shadow-2xl' : ''}`}>
-      {/* Cinema Mode Backdrop Dim Overlay */}
-      {isCinemaMode && (
-        <div
-          className="fixed inset-0 bg-black/90 z-40 transition-opacity"
-          onClick={() => setIsCinemaMode(false)}
-        />
-      )}
-
+    <div className="space-y-4">
       <div
         className={`relative group w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 z-50 transition-all ${
           videoDimensions.isPortrait
@@ -284,13 +296,12 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
             <p className="font-semibold text-lg">{errorText}</p>
             <button
               onClick={() => {
-                setUseProxyFallback(true);
                 loadStream();
               }}
               className="px-4 py-2 bg-fox-500 hover:bg-fox-600 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>开启代理防跨域极速重试</span>
+              <span>刷新与重新加载</span>
             </button>
           </div>
         ) : null}
@@ -329,7 +340,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           playsInline
         />
 
-        {/* Clean video overlay containing play/pause, volume, cinema mode, and fullscreen without blocking window */}
+        {/* Clean video overlay containing play/pause, volume, and fullscreen without blocking window */}
         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-between text-white z-10">
           <div className="flex items-center space-x-4">
             <button onClick={togglePlay} className="hover:text-fox-400 transition-colors">
@@ -344,18 +355,6 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           </div>
 
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsCinemaMode(!isCinemaMode)}
-              className={`text-xs font-semibold px-2.5 py-1 rounded border transition-colors flex items-center space-x-1 ${
-                isCinemaMode
-                  ? 'bg-amber-500 border-amber-400 text-white shadow'
-                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              <Tv2 className="w-3.5 h-3.5" />
-              <span>{isCinemaMode ? '退出观影' : '观影模式'}</span>
-            </button>
-
             <button onClick={toggleFullscreen} className="hover:text-fox-400 transition-colors">
               <Maximize className="w-5 h-5" />
             </button>
@@ -460,9 +459,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
           )}
         </div>
 
-        {/* Active Effective Bitrate & R2 Acceleration Real Status Badge */}
+        {/* Active Effective Bitrate & Preload Cache Switch Status */}
         {(() => {
-          const isR2ConfiguredAndActive = localStorage.getItem('wf_r2_enabled') === 'true' || useProxyFallback;
+          const isR2ConfiguredAndActive = localStorage.getItem('wf_r2_enabled') === 'true';
           const isBitrateValid = !errorText && (isPlaying || duration > 0);
           const currentQualityLabel =
             currentLevel === -1
@@ -475,7 +474,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               <div className="flex items-center space-x-2">
                 <div className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 text-xs font-bold flex items-center space-x-1.5 shadow-sm">
                   <AlertCircle className="w-4 h-4 text-red-500" />
-                  <span>当前生效: 无效 (源站断开/无法加载) · R2 存储节点未建立</span>
+                  <span>当前生效: 无效 (源站断开/无法加载)</span>
                 </div>
               </div>
             );
@@ -492,20 +491,25 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
               >
                 <ShieldCheck className={`w-4 h-4 ${isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
                 <span>
-                  当前生效: {currentQualityLabel} · {isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : 'R2 存储节点无效 (未开启或额度用尽)'}
+                  当前生效: {currentQualityLabel} · {isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : '极速直连流传输'}
                 </span>
               </div>
 
               <button
-                onClick={() => setUseProxyFallback(!useProxyFallback)}
+                onClick={() => {
+                  const nextVal = !preloadCacheEnabled;
+                  setPreloadCacheEnabled(nextVal);
+                  localStorage.setItem('wf_preload_cache', nextVal ? 'true' : 'false');
+                }}
                 className={`text-xs font-bold px-3 py-2 rounded-xl border flex items-center space-x-1.5 transition-all shadow-sm ${
-                  useProxyFallback
-                    ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/20'
+                  preloadCacheEnabled
+                    ? 'bg-fox-500 border-fox-500 text-white shadow-fox-500/20'
                     : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                 }`}
+                title="暂停播放时提前加载 180 秒(3分钟)视频缓存，提升播放流畅度"
               >
-                <ShieldCheck className="w-4 h-4" />
-                <span>{useProxyFallback ? '代理反查已开启 (极速)' : '启用极速代理'}</span>
+                <Zap className="w-4 h-4" />
+                <span>{preloadCacheEnabled ? '预加载缓存已开启 (180s预加)' : '开启预加载缓存'}</span>
               </button>
             </div>
           );

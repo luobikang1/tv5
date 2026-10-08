@@ -112,7 +112,7 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* International Language Switcher Dropdown */}
+            {/* Language Switcher Dropdown (Bilingual) */}
             <div className="relative flex items-center">
               <Globe className="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-2 pointer-events-none" />
               <select
@@ -122,11 +122,7 @@ export const Navbar: React.FC = () => {
                 title="切换语言 / Language"
               >
                 <option value="zh">简体中文</option>
-                <option value="zh-TW">繁體中文</option>
                 <option value="en">English</option>
-                <option value="ja">日本語</option>
-                <option value="ko">한국어</option>
-                <option value="es">Español</option>
               </select>
             </div>
 
