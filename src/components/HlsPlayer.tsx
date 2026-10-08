@@ -21,10 +21,12 @@ import { useApp } from '../context/AppContext';
 interface HlsPlayerProps {
   url: string;
   title?: string;
+  initialTime?: number;
   onEnded?: () => void;
+  onTimeProgress?: (secs: number) => void;
 }
 
-export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => {
+export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 0, onEnded, onTimeProgress }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const { defaultResolution } = useApp();
@@ -36,7 +38,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [preloadCacheEnabled, setPreloadCacheEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('wf_preload_cache') !== 'false';
+    return localStorage.getItem('wf_preload_cache') === 'true'; // Default disabled
   });
 
   // Brightness and Volume Slider State
@@ -91,9 +93,10 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
         hlsRef.current.destroy();
       }
 
-      const maxBufLen = preloadCacheEnabled ? 180 : 30; // Preload at least 3 minutes (180s) buffer when enabled
-      const maxMaxBufLen = preloadCacheEnabled ? 300 : 60;
-      const maxBufSize = preloadCacheEnabled ? 120 * 1024 * 1024 : 30 * 1024 * 1024;
+      // 弱网 30~45 秒最稳（默认 35s maxBufferLength），开启预加载按钮后提升到 180s (3 分钟)
+      const maxBufLen = preloadCacheEnabled ? 180 : 35;
+      const maxMaxBufLen = preloadCacheEnabled ? 300 : 45;
+      const maxBufSize = preloadCacheEnabled ? 120 * 1024 * 1024 : 35 * 1024 * 1024;
 
       const hls = new Hls({
         enableWorker: true,
@@ -333,6 +336,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, onEnded }) => 
                 isPortrait: h > w && w > 0,
               });
               setDuration(videoRef.current.duration || 0);
+              if (initialTime > 0 && Math.abs(videoRef.current.currentTime - initialTime) > 2) {
+                videoRef.current.currentTime = initialTime;
+              }
             }
           }}
           className="w-full h-full object-contain"

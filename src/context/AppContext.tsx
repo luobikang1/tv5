@@ -10,6 +10,8 @@ export interface WatchHistoryItem {
   source_name: string;
   episode_name?: string;
   episode_url?: string;
+  episode_index?: number;
+  last_time?: number;
   progress?: number;
   updated_at: number;
 }

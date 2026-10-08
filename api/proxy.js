@@ -31,7 +31,13 @@ export default async function handler(req, res) {
       headers: fetchHeaders,
     });
 
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (targetUrl.includes('.m3u8')) {
+      res.setHeader('Cache-Control', 'public, max-age=300'); // Index/Manifest: 5 minutes (1~10 mins range)
+    } else if (targetUrl.includes('.ts') || targetUrl.includes('.m4s') || targetUrl.includes('.mp4')) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable'); // Segments/Slices: 30 days (7~30 days range)
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
 
     const contentType = response.headers.get('content-type');
     if (contentType) res.setHeader('Content-Type', contentType);

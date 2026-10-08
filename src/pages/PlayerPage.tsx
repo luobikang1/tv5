@@ -8,12 +8,13 @@ import { ArrowLeft, Home, Download, SkipBack, SkipForward, Layers, Check, Copy, 
 export const PlayerPage: React.FC = () => {
   const { sourceId, vodId } = useParams<{ sourceId: string; vodId: string }>();
   const navigate = useNavigate();
-  const { apiList, addHistory, isFavorite, addFavorite, removeFavorite } = useApp();
+  const { apiList, historyList, addHistory, isFavorite, addFavorite, removeFavorite } = useApp();
 
   const [video, setVideo] = useState<VideoItem | null>(null);
   const [playSources, setPlaySources] = useState<PlaySource[]>([]);
   const [activeSourceIndex, setActiveSourceIndex] = useState(0);
   const [activeEpisodeIndex, setActiveEpisodeIndex] = useState(0);
+  const [initialSeekTime, setInitialSeekTime] = useState(0);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -33,15 +34,35 @@ export const PlayerPage: React.FC = () => {
         const parsedSources = parsePlayUrls(data.vod_play_from, data.vod_play_url);
         setPlaySources(parsedSources);
 
-        if (parsedSources.length > 0 && parsedSources[0].episodes.length > 0) {
+        // Find existing history record for exact playhead time and episode index
+        const existingHistory = historyList.find((h) => String(h.id) === vidKey);
+        let targetEpIndex = 0;
+        let targetSeek = 0;
+
+        if (existingHistory) {
+          if (typeof existingHistory.episode_index === 'number' && existingHistory.episode_index >= 0) {
+            targetEpIndex = existingHistory.episode_index;
+          }
+          if (typeof existingHistory.last_time === 'number' && existingHistory.last_time > 0) {
+            targetSeek = existingHistory.last_time;
+          }
+        }
+
+        if (parsedSources.length > 0 && parsedSources[0].episodes.length > targetEpIndex) {
+          setActiveEpisodeIndex(targetEpIndex);
+          setInitialSeekTime(targetSeek);
+
+          const curEp = parsedSources[0].episodes[targetEpIndex];
           addHistory({
-            id: `${sourceId}-${vodId}`,
+            id: vidKey,
             vod_name: data.vod_name,
             vod_pic: data.vod_pic,
             source_id: sourceId,
             source_name: api.name,
-            episode_name: parsedSources[0].episodes[0].name,
-            episode_url: parsedSources[0].episodes[0].url,
+            episode_name: curEp.name,
+            episode_url: curEp.url,
+            episode_index: targetEpIndex,
+            last_time: targetSeek,
           });
         }
       }
@@ -56,16 +77,35 @@ export const PlayerPage: React.FC = () => {
 
   const handleSelectEpisode = (epIndex: number) => {
     setActiveEpisodeIndex(epIndex);
+    setInitialSeekTime(0);
     const ep = currentSource?.episodes[epIndex];
     if (video && ep) {
       addHistory({
-        id: `${sourceId}-${vodId}`,
+        id: vidKey,
         vod_name: video.vod_name,
         vod_pic: video.vod_pic,
         source_id: sourceId || '',
         source_name: video.source_name || '',
         episode_name: ep.name,
         episode_url: ep.url,
+        episode_index: epIndex,
+        last_time: 0,
+      });
+    }
+  };
+
+  const handleTimeProgress = (secs: number) => {
+    if (video && currentEpisode && secs > 0) {
+      addHistory({
+        id: vidKey,
+        vod_name: video.vod_name,
+        vod_pic: video.vod_pic,
+        source_id: sourceId || '',
+        source_name: video.source_name || '',
+        episode_name: currentEpisode.name,
+        episode_url: currentEpisode.url,
+        episode_index: activeEpisodeIndex,
+        last_time: Math.floor(secs),
       });
     }
   };
@@ -170,7 +210,9 @@ export const PlayerPage: React.FC = () => {
         <HlsPlayer
           url={currentEpisode.url}
           title={`${video.vod_name} - ${currentEpisode.name}`}
+          initialTime={initialSeekTime}
           onEnded={handleNextEpisode}
+          onTimeProgress={handleTimeProgress}
         />
       ) : null}
 
