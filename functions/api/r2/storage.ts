@@ -70,6 +70,46 @@ export async function onRequest(context: any) {
   if (request.method === 'GET') {
     const url = new URL(request.url);
     const key = url.searchParams.get('key');
+    const action = url.searchParams.get('action');
+
+    // List all files in R2 Bucket for full cross-device visualization
+    if (action === 'list' || (!key && action !== 'get')) {
+      if (r2Bucket) {
+        try {
+          const listRes = await r2Bucket.list({ limit: 500 });
+          const files = listRes.objects.map((obj: any) => {
+            const fileKey = obj.key;
+            const meta = obj.customMetadata || {};
+            const origName = meta.originalName ? decodeURIComponent(meta.originalName) : fileKey;
+            const category = meta.category ? decodeURIComponent(meta.category) : '其他';
+            const uploadDate = meta.uploadDate || new Date(obj.uploaded).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+            return {
+              id: fileKey,
+              name: origName,
+              sizeBytes: obj.size,
+              category,
+              uploadDate,
+              url: `/api/r2/storage?key=${encodeURIComponent(fileKey)}`,
+              fileType: obj.httpMetadata?.contentType || 'application/octet-stream',
+            };
+          });
+
+          return new Response(JSON.stringify({ success: true, files }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (listErr: any) {
+          console.warn('R2 list error:', listErr);
+          return new Response(JSON.stringify({ success: false, error: listErr.message }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        return new Response(JSON.stringify({ success: true, files: [] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     if (!key) {
       return new Response(JSON.stringify({ success: false, message: 'Key param required' }), {

@@ -26,6 +26,8 @@ import {
   Sparkles,
   Globe,
   Smartphone,
+  Moon,
+  Sun,
   Users,
   XCircle,
   Clock,
@@ -44,6 +46,15 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
+  MessageSquare,
+  Send,
+  Trash,
+  ImageOff,
+  FolderPlus,
+  Folder,
+  BookOpen,
+  Save,
+  Search,
 } from 'lucide-react';
 
 interface StoredCloudFile {
@@ -51,6 +62,7 @@ interface StoredCloudFile {
   name: string;
   sizeBytes: number;
   category: string;
+  folderId?: string;
   uploadDate: string;
   url: string;
   fileType: string;
@@ -81,6 +93,10 @@ export const SettingsPage: React.FC = () => {
     customHeroBgImage,
     setCustomHeroBgImage,
     clearCustomBg,
+    isDarkMode,
+    toggleDarkMode,
+    deviceViewMode,
+    setDeviceViewMode,
     defaultResolution,
     setDefaultResolution,
     apiList,
@@ -89,7 +105,6 @@ export const SettingsPage: React.FC = () => {
     resetDefaultApis,
     showAdultColumn,
     setShowAdultColumn,
-    restoreDefaultSettings,
     d1Enabled,
     setD1Enabled,
     manualSyncD1,
@@ -100,7 +115,65 @@ export const SettingsPage: React.FC = () => {
     removeDevice,
     removeUser,
     refreshUsersAndDevices,
+    publicSharedFiles,
+    shareToPublicShowcase,
+    removeFromPublicShowcase,
+    messagesList,
+    addMessage,
+    deleteMessage,
+    deleteMessageImage,
+    notesList,
+    addNote,
+    updateNote,
+    deleteNote,
+    clearNotes,
+    syncR2CloudDrive,
   } = useApp();
+
+  // Notebook State
+  const [noteTitleInput, setNoteTitleInput] = useState('');
+  const [noteContentInput, setNoteContentInput] = useState('');
+  const [noteCategoryInput, setNoteCategoryInput] = useState('默认');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteSearchQuery, setNoteSearchQuery] = useState('');
+
+  // R2 Sync State & Light Indicator
+  const [r2Syncing, setR2Syncing] = useState(false);
+  const [r2SyncStatus, setR2SyncStatus] = useState<'success' | 'syncing' | 'idle' | 'error'>('idle');
+  const [r2SyncMsg, setR2SyncMsg] = useState<string | null>(null);
+
+  // Message Board State
+  const [msgInputText, setMsgInputText] = useState('');
+  const [msgAttachedImage, setMsgAttachedImage] = useState<string | null>(null);
+  const [replyTarget, setReplyTarget] = useState<{ id: string; username: string; content: string } | null>(null);
+
+  const handleMessageImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        if (base64) {
+          setMsgAttachedImage(base64);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSendCommunityMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!msgInputText.trim() && !msgAttachedImage) return;
+    addMessage(
+      msgInputText,
+      msgAttachedImage || undefined,
+      replyTarget?.username,
+      replyTarget?.content
+    );
+    setMsgInputText('');
+    setMsgAttachedImage(null);
+    setReplyTarget(null);
+  };
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
   const [showPass, setShowPass] = useState(false);
@@ -154,14 +227,26 @@ export const SettingsPage: React.FC = () => {
   });
 
   // Collapsible Sections Management State for All Settings Sections
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  // Default is collapsed for all sections ({})
+  // Opened sections are persisted in localStorage so they stay open on refresh
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('wf_settings_expanded');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const toggleSection = (key: string) => {
-    setCollapsedSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setExpandedSections((prev) => {
+      const updated = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('wf_settings_expanded', JSON.stringify(updated));
+      return updated;
+    });
   };
+
+  const isExpanded = (key: string) => !!expandedSections[key];
   const [cloudFiles, setCloudFiles] = useState<StoredCloudFile[]>(() => {
     const saved = localStorage.getItem('wf_cloud_files');
     return saved ? JSON.parse(saved) : [];
@@ -181,9 +266,96 @@ export const SettingsPage: React.FC = () => {
   const [batchMoveTargetCategory, setBatchMoveTargetCategory] = useState<string>('视频');
 
   const filteredCloudFiles = cloudFiles.filter((f) => {
-    if (selectedListCategory === '全部') return true;
-    return f.category === selectedListCategory;
+    if (selectedListCategory !== '全部' && f.category !== selectedListCategory) {
+      return false;
+    }
+    return true;
   });
+
+  // Fetch all R2 Bucket files directly from R2 endpoint for full visualization across all devices
+  const fetchAllR2Files = async () => {
+    try {
+      const res = await fetch('/api/r2/storage?action=list');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.files)) {
+        const remoteFiles: StoredCloudFile[] = data.files;
+        if (remoteFiles.length > 0) {
+          const fileMap = new Map<string, StoredCloudFile>();
+          cloudFiles.forEach((f) => fileMap.set(f.id, f));
+          remoteFiles.forEach((rf) => {
+            const existing = fileMap.get(rf.id);
+            if (existing) {
+              fileMap.set(rf.id, { ...existing, ...rf, url: rf.url || existing.url });
+            } else {
+              fileMap.set(rf.id, rf);
+            }
+          });
+          const merged = Array.from(fileMap.values());
+          setCloudFiles(merged);
+          localStorage.setItem('wf_cloud_files', JSON.stringify(merged));
+        }
+      }
+    } catch (err) {
+      console.warn('Fetch all R2 files error:', err);
+    }
+  };
+
+  const handle1ClickR2Sync = async () => {
+    setR2Syncing(true);
+    setR2SyncStatus('syncing');
+    setR2SyncMsg('正在抓取全量云端存储文件并同步至 Cloudflare D1 数据库...');
+    await fetchAllR2Files();
+    const success = await syncR2CloudDrive();
+    setR2Syncing(false);
+    if (success) {
+      setR2SyncStatus('success');
+      setR2SyncMsg('✅ R2 云端全量文件、文件夹与随身笔记已成功无缝可视化同步！');
+      setTimeout(() => setR2SyncMsg(null), 3500);
+    } else {
+      setR2SyncStatus('error');
+      setR2SyncMsg('⚠️ 同步完成（本地文件已全量可视化展示），请确认 D1 数据库绑定状态');
+    }
+  };
+
+  const handleSaveNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteTitleInput.trim() && !noteContentInput.trim()) return;
+    if (editingNoteId) {
+      updateNote(editingNoteId, noteTitleInput, noteContentInput, noteCategoryInput);
+      setEditingNoteId(null);
+    } else {
+      addNote(noteTitleInput, noteContentInput, noteCategoryInput);
+    }
+    setNoteTitleInput('');
+    setNoteContentInput('');
+  };
+
+  const handleEditNote = (note: any) => {
+    setEditingNoteId(note.id);
+    setNoteTitleInput(note.title);
+    setNoteContentInput(note.content);
+    setNoteCategoryInput(note.category || '默认');
+  };
+
+  const handleDownloadNoteTxt = (note: any) => {
+    const textContent = `======== ${note.title || '无标题笔记'} ========\n分类: ${note.category || '默认'}\n时间: ${note.updatedAt || ''}\n\n${note.content || ''}\n`;
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${note.title || '随身笔记'}_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(downloadUrl);
+  };
+
+  const filteredNotes = notesList.filter((n) =>
+    noteSearchQuery
+      ? n.title.toLowerCase().includes(noteSearchQuery.toLowerCase()) ||
+        n.content.toLowerCase().includes(noteSearchQuery.toLowerCase())
+      : true
+  );
 
   const getBeijingTimeString = () => {
     return (
@@ -204,100 +376,94 @@ export const SettingsPage: React.FC = () => {
   const usedGB = usedMB / 1024;
   const remainingGB = Math.max(0, totalGB - usedGB);
 
-  const handleLocalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files);
     setUploading(true);
     setUploadProgress(0);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('category', fileCategory);
+    let currentFiles = [...cloudFiles];
+    let totalAddedBytes = 0;
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/r2/storage', true);
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', fileCategory);
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
-      setUploadProgress(100);
       try {
-        const data = JSON.parse(xhr.responseText);
-        if (data.success && data.file) {
-              const newFileItem: StoredCloudFile = {
-                ...data.file,
-                uploadDate: getBeijingTimeString(),
-              };
-          const updated = [newFileItem, ...cloudFiles];
-          setCloudFiles(updated);
-          localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+        const res = await new Promise<StoredCloudFile>((resolve) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/r2/storage', true);
 
-          const addedGB = file.size / (1024 * 1024 * 1024);
-          const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
-          setR2EgressUsageGB(newEgressGB);
-          localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
-        } else {
-          const blobUrl = URL.createObjectURL(file);
-          const newFileItem: StoredCloudFile = {
-            id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            name: file.name,
-            sizeBytes: file.size,
-            category: fileCategory,
-                uploadDate: getBeijingTimeString(),
-            url: blobUrl,
-            fileType: file.type || 'application/octet-stream',
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const filePercent = event.loaded / event.total;
+              const overallPercent = Math.round(((i + filePercent) / fileList.length) * 100);
+              setUploadProgress(overallPercent);
+            }
           };
-          const updated = [newFileItem, ...cloudFiles];
-          setCloudFiles(updated);
-              localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
-        }
-      } catch {
-        const blobUrl = URL.createObjectURL(file);
-        const newFileItem: StoredCloudFile = {
-          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
-          sizeBytes: file.size,
-          category: fileCategory,
-              uploadDate: getBeijingTimeString(),
-          url: blobUrl,
-          fileType: file.type || 'application/octet-stream',
-        };
-        const updated = [newFileItem, ...cloudFiles];
-        setCloudFiles(updated);
-            localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
-      } finally {
-        setTimeout(() => {
-          setUploading(false);
-          setUploadProgress(0);
-        }, 500);
-      }
-    };
 
-    xhr.onerror = () => {
-      const blobUrl = URL.createObjectURL(file);
-      const newFileItem: StoredCloudFile = {
-        id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        name: file.name,
-        sizeBytes: file.size,
-        category: fileCategory,
-            uploadDate: getBeijingTimeString(),
-        url: blobUrl,
-        fileType: file.type || 'application/octet-stream',
-      };
-      const updated = [newFileItem, ...cloudFiles];
-      setCloudFiles(updated);
-          localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+          xhr.onload = () => {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data.success && data.file) {
+                resolve({
+                  ...data.file,
+                  uploadDate: getBeijingTimeString(),
+                });
+                return;
+              }
+            } catch {}
+            const blobUrl = URL.createObjectURL(file);
+            resolve({
+              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: file.name,
+              sizeBytes: file.size,
+              category: fileCategory,
+              uploadDate: getBeijingTimeString(),
+              url: blobUrl,
+              fileType: file.type || 'application/octet-stream',
+            });
+          };
+
+          xhr.onerror = () => {
+            const blobUrl = URL.createObjectURL(file);
+            resolve({
+              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: file.name,
+              sizeBytes: file.size,
+              category: fileCategory,
+              uploadDate: getBeijingTimeString(),
+              url: blobUrl,
+              fileType: file.type || 'application/octet-stream',
+            });
+          };
+
+          xhr.send(formData);
+        });
+
+        currentFiles = [res, ...currentFiles];
+        totalAddedBytes += file.size;
+        setCloudFiles(currentFiles);
+        localStorage.setItem('wf_cloud_files', JSON.stringify(currentFiles));
+      } catch {
+        // Continue with remaining files
+      }
+    }
+
+    const addedGB = totalAddedBytes / (1024 * 1024 * 1024);
+    const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
+    setR2EgressUsageGB(newEgressGB);
+    localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
+
+    setUploadProgress(100);
+    setTimeout(() => {
       setUploading(false);
       setUploadProgress(0);
-    };
-
-    xhr.send(formData);
+    }, 500);
   };
 
   const handleDownloadFileWithProgress = (file: StoredCloudFile) => {
@@ -348,6 +514,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteCloudFile = async (id: string) => {
+    const targetFile = cloudFiles.find((f) => f.id === id);
+    const fileName = targetFile ? targetFile.name : '此文件';
+    if (!window.confirm(`确定要删除“${fileName}”吗？删除后不可恢复。`)) {
+      return;
+    }
     const updated = cloudFiles.filter((f) => f.id !== id);
     setCloudFiles(updated);
     setSelectedFileIds((prev) => prev.filter((item) => item !== id));
@@ -355,6 +526,17 @@ export const SettingsPage: React.FC = () => {
       localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
     } catch {
       // Ignore quota errors on deletion
+    }
+
+    // Record tombstone deletion ID to preserve deletion during multi-device merge sync
+    try {
+      const deletedList: string[] = JSON.parse(localStorage.getItem('wf_cloud_files_deleted') || '[]');
+      if (!deletedList.includes(id)) {
+        const newDeleted = [...deletedList, id];
+        localStorage.setItem('wf_cloud_files_deleted', JSON.stringify(newDeleted));
+      }
+    } catch {
+      // ignore
     }
 
     try {
@@ -412,6 +594,14 @@ export const SettingsPage: React.FC = () => {
     setCloudFiles(updated);
     setSelectedFileIds([]);
     localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+
+    try {
+      const deletedList: string[] = JSON.parse(localStorage.getItem('wf_cloud_files_deleted') || '[]');
+      const newDeleted = Array.from(new Set([...deletedList, ...idsToDelete]));
+      localStorage.setItem('wf_cloud_files_deleted', JSON.stringify(newDeleted));
+    } catch {
+      // ignore
+    }
 
     for (const id of idsToDelete) {
       try {
@@ -593,52 +783,97 @@ export const SettingsPage: React.FC = () => {
         )}
       </div>
 
-      {/* International Language Switcher Section */}
+      {/* CDN Node Access Status & Cache Monitor Section */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-            <Globe className="w-5 h-5 text-fox-500" />
-            <h2>国际主流语言切换 (International Language Switcher)</h2>
-          </div>
-          <button
-            onClick={() => toggleSection('lang')}
-            className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-          >
-            {collapsedSections['lang'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['lang'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
-          </button>
-        </div>
+        {(() => {
+          // Dynamic real-time verification of CDN proxy node status
+          const [cdnHealth, setCdnHealth] = React.useState<'checking' | 'active' | 'inactive'>('checking');
 
-        {!collapsedSections['lang'] && (
-          <div className="space-y-3 animate-fadeIn">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              支持国际主流多语言一键切换，包含中文简体、繁体、英语、日语、韩语与西班牙语。
-            </p>
+          React.useEffect(() => {
+            let active = true;
+            const checkCdn = async () => {
+              try {
+                const res = await fetch('/api/proxy?url=https%3A%2F%2Fhttpbin.org%2Fget', { method: 'GET' });
+                if (res.ok && active) {
+                  setCdnHealth('active');
+                  return;
+                }
+              } catch {
+                // Fallback check
+              }
+              // If proxy ping fails or offline
+              if (active) setCdnHealth('inactive');
+            };
+            checkCdn();
+            return () => { active = false; };
+          }, []);
 
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 pt-2">
-              {[
-                { code: 'zh', name: '简体中文' },
-                { code: 'zh-TW', name: '繁體中文' },
-                { code: 'en', name: 'English' },
-                { code: 'ja', name: '日本語' },
-                { code: 'ko', name: '한국어' },
-                { code: 'es', name: 'Español' },
-              ].map((item) => (
+          return (
+            <>
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+                    <Globe className="w-5 h-5 text-sky-500" />
+                    <h2>CDN 接入状态查看区 (缓存数值与设定)</h2>
+                  </div>
+                  {/* Dynamic CDN Status Indicator Light */}
+                  {cdnHealth === 'active' ? (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>🟢 后台 CDN 边缘节点已接入生效</span>
+                    </div>
+                  ) : cdnHealth === 'checking' ? (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+                      <span>🟡 正在检测 CDN 边缘节点...</span>
+                    </div>
+                  ) : (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                      <span>🔴 CDN 边缘代理未连接 (直连模式)</span>
+                    </div>
+                  )}
+                </div>
+
                 <button
-                  key={item.code}
-                  onClick={() => setLanguage(item.code as any)}
-                  className={`py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
-                    language === item.code
-                      ? 'bg-fox-500 text-white border-fox-500 shadow-md scale-105'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                  }`}
+                  onClick={() => toggleSection('cdn')}
+                  className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
                 >
-                  {item.name}
+                  {isExpanded('cdn') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <span>{isExpanded('cdn') ? '收起界面 ▲' : '展开界面 ▼'}</span>
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+
+              {isExpanded('cdn') && (
+                <div className="space-y-4 animate-fadeIn">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    实时监控全站 CDN 边缘节点分层缓存规则与流媒体加速设定，确保弱网与高并发下的播放稳定性。
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">🎬 视频分片缓存 (Segments)</p>
+                      <p className="text-sm font-mono font-extrabold text-sky-500">7 ~ 30 天 (30 Days Cache)</p>
+                      <p className="text-[11px] text-slate-400">`.ts / .m4s / .mp4` 边缘持久化存储</p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">📋 索引与清单缓存 (Manifest)</p>
+                      <p className="text-sm font-mono font-extrabold text-emerald-500">1 ~ 10 分钟 (5 Mins Refresh)</p>
+                      <p className="text-[11px] text-slate-400">`.m3u8` 动态索引分层更新</p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">⚡ 弱网预缓冲设定 (Buffer)</p>
+                      <p className="text-sm font-mono font-extrabold text-fox-500">30 ~ 45 秒 (默认35s / 开启180s)</p>
+                      <p className="text-[11px] text-slate-400">自适应防卡顿缓冲池</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {/* Homepage & Hero Banner Background Customization */}
@@ -646,27 +881,63 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Palette className="w-5 h-5 text-fox-500" />
-            <h2>背景颜色与首页介绍选项区照片壁纸自定义</h2>
+            <h2>主题调色与全局背景自定义</h2>
           </div>
           <button
             onClick={() => toggleSection('bg')}
             className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
           >
-            {collapsedSections['bg'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['bg'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+            {isExpanded('bg') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('bg') ? '收起界面 ▲' : '展开界面 ▼'}</span>
           </button>
         </div>
 
-        {!collapsedSections['bg'] && (
+        {isExpanded('bg') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              您可以自定义全局背景颜色、全局背景壁纸，或者单独上传首页顶部介绍选项区的背景壁纸照片。
+              您可以选择预设主题调色按键，或自定义全局背景颜色、全局背景壁纸，也可单独上传首页介绍区的背景壁纸。
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-2">
+            {/* Theme Preset Color Selector Buttons */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-sky-500" />
+                <span>主题调色按键 (一键快速配色)</span>
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { name: '🔷 经典蓝绿', color: '#0284c7' },
+                  { name: '🦊 白狐橙红', color: '#ea580c' },
+                  { name: '🌌 深邃极夜', color: '#0f172a' },
+                  { name: '🌿 清爽翡翠', color: '#059669' },
+                  { name: '🍇 雅致紫罗兰', color: '#7c3aed' },
+                  { name: '🌸 樱花粉黛', color: '#be185d' },
+                  { name: '💎 极简亮白', color: '#f8fafc' },
+                ].map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => setCustomBgColor(preset.color)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 border transition-all shadow-sm hover:scale-105 ${
+                      customBgColor === preset.color
+                        ? 'ring-2 ring-fox-500 scale-105 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-extrabold'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full border shadow-inner inline-block"
+                      style={{ backgroundColor: preset.color }}
+                    />
+                    <span>{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl pt-1">
               {/* Custom Color Selector */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">全局背景颜色</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">自定义背景调色板</label>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
@@ -690,14 +961,30 @@ export const SettingsPage: React.FC = () => {
                 </label>
               </div>
 
-              {/* Custom Hero Banner Photo Upload */}
+              {/* Custom Hero Banner Photo Upload & Full Image Mode Toggle */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">首页介绍区照片</label>
-                <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
-                  <Sparkles className="w-4 h-4" />
-                  <span>上传介绍区照片</span>
-                  <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+                    <Sparkles className="w-4 h-4" />
+                    <span>上传介绍区照片</span>
+                    <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = localStorage.getItem('wf_hero_full_mode') === 'true';
+                      localStorage.setItem('wf_hero_full_mode', current ? 'false' : 'true');
+                      window.dispatchEvent(new Event('storage'));
+                      setPassSaved(true);
+                      setTimeout(() => setPassSaved(false), 1500);
+                    }}
+                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition-all text-left"
+                  >
+                    <span>{localStorage.getItem('wf_hero_full_mode') === 'true' ? '🖼️ 全图无裁剪展示 (已开启)' : '🖼️ 切换为全图无裁剪展示'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -709,6 +996,74 @@ export const SettingsPage: React.FC = () => {
                 重置所有背景为系统默认
               </button>
             )}
+
+            {/* Quick Dark Mode & Mobile/PC View Mode Buttons */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              {/* Dark Mode Quick Toggle */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    {isDarkMode ? <Moon className="w-4 h-4 text-amber-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                    <span>夜间 / 日间主题模式一键切换</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">快速切换全站深色夜间模式或浅色日间视觉主题</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleDarkMode}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-1.5"
+                >
+                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+                  <span>{isDarkMode ? '切换为日间模式 ☀️' : '切换为夜间模式 🌙'}</span>
+                </button>
+              </div>
+
+              {/* Mobile / PC View Mode Switcher */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4 text-fox-500" />
+                    <span>手机 / 电脑 界面模式一键切换</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">一键切换手机端紧凑视觉布局或电脑端宽屏大视图</p>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('auto')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'auto'
+                        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border-transparent'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    🌐 自动
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('mobile')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'mobile'
+                        ? 'bg-fox-500 text-white border-fox-500 shadow-fox-500/20'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    📱 手机端模式
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('desktop')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'desktop'
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sky-500/20'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    💻 电脑端模式
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </section>
@@ -733,13 +1088,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('pass')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['pass'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['pass'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('pass') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('pass') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['pass'] && (
+        {isExpanded('pass') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               如不主动点击退出，登录后将在<b>一月内保持登入解锁状态</b>（免重复输入密码）。点击下方“保存密码设置”可直接无刷新更新系统独立访问密码。
@@ -775,12 +1130,77 @@ export const SettingsPage: React.FC = () => {
         )}
       </section>
 
-      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch & Status Indicator Light */}
+      {/* Admin Only Registered Users Directory */}
+      {isAdmin && (
+        <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+              <Users className="w-5 h-5 text-fox-500" />
+              <h2>已注册用户管理列表 (管理员专属)</h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={refreshUsersAndDevices}
+                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>刷新用户</span>
+              </button>
+              <button
+                onClick={() => toggleSection('users')}
+                className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+              >
+                {isExpanded('users') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <span>{isExpanded('users') ? '收起界面 ▲' : '展开界面 ▼'}</span>
+              </button>
+            </div>
+          </div>
+
+          {isExpanded('users') && (
+            <div className="space-y-3 animate-fadeIn">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                查看全站已注册账号信息，可管理与移除违规用户。
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                {registeredUsers.map((u) => (
+                  <div
+                    key={u.username}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center space-x-2 truncate">
+                      <User className="w-4 h-4 text-fox-500 flex-shrink-0" />
+                      <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{u.username}</span>
+                      {u.username === 'admin' && (
+                        <span className="px-1.5 py-0.5 bg-fox-500/10 text-fox-500 text-[10px] font-extrabold rounded">
+                          管理员
+                        </span>
+                      )}
+                    </div>
+                    {u.username !== 'admin' && (
+                      <button
+                        onClick={() => removeUser(u.username)}
+                        className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                        title="删除用户"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Cloudflare R2 Object Storage Integration with Enable/Disable Switch & Status Indicator Light (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-5">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <Cloud className="w-5 h-5 text-sky-500" />
-            <h2>Cloudflare R2 对象存储配置与接入状态</h2>
+            <h2>Cloudflare R2 对象存储配置与接入状态（功能暂不适用）</h2>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -807,13 +1227,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('r2')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['r2'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['r2'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('r2') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('r2') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['r2'] && (
+        {isExpanded('r2') && (
           <div className="space-y-5 animate-fadeIn">
             <div className="flex items-center justify-between">
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -976,8 +1396,10 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </section>
+      )}
 
-      {/* Cloudflare D1 Synchronization */}
+      {/* Cloudflare D1 Synchronization (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
@@ -1000,13 +1422,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('d1')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['d1'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['d1'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('d1') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('d1') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['d1'] && (
+        {isExpanded('d1') && (
           <div className="space-y-4 animate-fadeIn">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               部署在 Cloudflare Pages 绑定 D1 数据库（绑定名: DB）后，可自动实时同步播放历史进度（300+条）、追剧收藏与用户自定义设置。
@@ -1035,6 +1457,7 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
       </section>
+      )}
 
       {/* Adult Section Toggle */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
@@ -1059,13 +1482,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('adult')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['adult'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['adult'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('adult') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('adult') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['adult'] && (
+        {isExpanded('adult') && (
           <p className="text-xs text-slate-500 dark:text-slate-400 animate-fadeIn">
             开启后主页将自动注入互联网成人视频 CMS 接口并在首页展示成人专区。
           </p>
@@ -1103,13 +1526,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('apis')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['apis'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['apis'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('apis') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('apis') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['apis'] && (
+        {isExpanded('apis') && (
           <div className="space-y-6 animate-fadeIn">
             {updateMsg && <p className="text-xs font-bold text-emerald-500">{updateMsg}</p>}
 
@@ -1204,13 +1627,13 @@ export const SettingsPage: React.FC = () => {
               onClick={() => toggleSection('discovery')}
               className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
             >
-              {collapsedSections['discovery'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['discovery'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
+              {isExpanded('discovery') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('discovery') ? '收起界面 ▲' : '展开界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['discovery'] && (
+        {isExpanded('discovery') && (
           <div className="space-y-4 animate-fadeIn">
             <div className="flex justify-end">
               <input
@@ -1259,33 +1682,76 @@ export const SettingsPage: React.FC = () => {
         )}
       </section>
 
-      {/* R2 Cloud Local File Upload & Storage Manager (设置底部 - 可收纳功能 & 全员可用) */}
+      {/* R2 Cloud Local File Upload & Storage Manager (Restricted to Admin) */}
+      {isAdmin && (
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <UploadCloud className="w-6 h-6 text-sky-500" />
-            <h2>R2 本地文件上传与云盘存储中心</h2>
+            <h2>R2云盘</h2>
+
+            {/* Sync Light Status Indicator Badge */}
+            <div
+              className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm ml-2 ${
+                r2SyncStatus === 'success'
+                  ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                  : r2SyncStatus === 'syncing'
+                  ? 'bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400'
+                  : r2SyncStatus === 'error'
+                  ? 'bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400'
+                  : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  r2SyncStatus === 'success'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : r2SyncStatus === 'syncing'
+                    ? 'bg-amber-500 animate-ping'
+                    : r2SyncStatus === 'error'
+                    ? 'bg-red-500'
+                    : 'bg-emerald-500'
+                }`}
+              />
+              <span>
+                {r2SyncStatus === 'success'
+                  ? '🟢 已一键云端同步'
+                  : r2SyncStatus === 'syncing'
+                  ? '🟡 正在同步云盘中...'
+                  : r2SyncStatus === 'error'
+                  ? '🔴 同步失败'
+                  : '🟢 同步在线灯'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="hidden sm:flex items-center space-x-2 text-xs font-mono font-bold">
-              <span className="text-slate-500 dark:text-slate-400">免费存储总量: 10.00 GB</span>
-              <span className="text-emerald-500">剩余: {remainingGB.toFixed(2)} GB</span>
-            </div>
+            {/* 1-Click Sync Button */}
+            <button
+              onClick={handle1ClickR2Sync}
+              disabled={r2Syncing}
+              className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md shadow-sky-500/20 transition-all disabled:opacity-50"
+              title="点击一键同步 R2 云盘数据至 Cloudflare D1 (新数据覆盖老数据)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${r2Syncing ? 'animate-spin' : ''}`} />
+              <span>一键同步 R2 云盘</span>
+            </button>
 
             {/* Collapsible Panel Section Toggle Button */}
             <button
               onClick={() => toggleSection('storage')}
               className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
             >
-              {collapsedSections['storage'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              <span>{collapsedSections['storage'] ? '展开云盘界面 ▼' : '收起云盘界面 ▲'}</span>
+              {isExpanded('storage') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <span>{isExpanded('storage') ? '收起云盘界面 ▲' : '展开云盘界面 ▼'}</span>
             </button>
           </div>
         </div>
 
-        {!collapsedSections['storage'] && (
+        {isExpanded('storage') && (
           <div className="space-y-6 animate-fadeIn">
+            {r2SyncMsg && <p className="text-xs font-bold text-sky-500">{r2SyncMsg}</p>}
+
             {/* Beijing Time Notice & Free Storage Space Progress Meter & D1 Sync Notice */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold gap-1">
@@ -1302,32 +1768,40 @@ export const SettingsPage: React.FC = () => {
                   style={{ width: `${Math.min((usedGB / 10) * 100, 100)}%` }}
                 />
               </div>
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1.5">
-                <Database className="w-4 h-4 flex-shrink-0" />
-                <span>💡 说明：开启 Cloudflare D1 数据库后，R2 云盘存储的所有文件与分类目录将自动实现多设备云端无缝同步。</span>
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-bold space-y-1">
+                <div className="flex items-center space-x-1.5">
+                  <Database className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                  <span>D1 数据库跨设备文件同步 (新数据覆盖老数据) 说明：</span>
+                </div>
+                <p className="text-[11px] font-normal text-slate-600 dark:text-slate-300 leading-relaxed">
+                  数据同步方式已全面升级为<b>新数据覆盖老数据</b>。在任一设备上新建/删除文件夹、上传或重命名文件后，点击【一键同步 R2 云盘】即可直接无缝更新云端全量数据。
+                </p>
               </div>
             </div>
 
-            {/* File Upload Form (Unrestricted - Available for All Users) */}
+            {/* Categorized File Upload Form (选择文件上传到的分类文件夹) */}
             <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-3">
-              <div className="w-full sm:w-40">
+              <div className="w-full sm:w-56">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  选择上传的目标分类文件夹：
+                </label>
                 <select
                   value={fileCategory}
                   onChange={(e) => setFileCategory(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="视频">🎬 视频分类</option>
-                  <option value="音乐">🎵 音乐分类</option>
-                  <option value="图片">🖼️ 图片分类</option>
-                  <option value="文档">📄 文档分类</option>
-                  <option value="其他">📦 其他分类</option>
+                  <option value="视频">🎬 视频分类文件夹</option>
+                  <option value="音乐">🎵 音乐分类文件夹</option>
+                  <option value="图片">🖼️ 图片分类文件夹</option>
+                  <option value="文档">📄 文档分类文件夹</option>
+                  <option value="其他">📦 其他分类文件夹</option>
                 </select>
               </div>
 
-              <div className="flex-1 w-full space-y-1.5">
-                <label className="cursor-pointer w-full flex items-center justify-center space-x-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
+              <div className="flex-1 w-full space-y-1.5 pt-2 sm:pt-0">
+                <label className="cursor-pointer w-full flex items-center justify-center space-x-2 px-5 py-3 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 transition-all">
                   <UploadCloud className="w-4 h-4" />
-                  <span>{uploading ? `正在上传储存中... ${uploadProgress}%` : '选择本地单文件或批量上传储存至 R2 云盘'}</span>
+                  <span>{uploading ? `正在上传至【${fileCategory}分类文件夹】... ${uploadProgress}%` : `选择本地文件上传至【${fileCategory}分类文件夹】`}</span>
                   <input type="file" multiple onChange={handleLocalFileUpload} disabled={uploading} className="hidden" />
                 </label>
 
@@ -1365,6 +1839,14 @@ export const SettingsPage: React.FC = () => {
               {selectedFileIds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
                   <button
+                    onClick={() => setSelectedFileIds([])}
+                    className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl font-bold flex items-center space-x-1 transition-colors shadow-sm"
+                  >
+                    <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                    <span>一键取消选择</span>
+                  </button>
+
+                  <button
                     onClick={handleBatchDownload}
                     className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold flex items-center space-x-1 shadow transition-colors"
                   >
@@ -1378,11 +1860,11 @@ export const SettingsPage: React.FC = () => {
                       onChange={(e) => setBatchMoveTargetCategory(e.target.value)}
                       className="bg-transparent text-slate-800 dark:text-slate-200 font-bold focus:outline-none"
                     >
-                      <option value="视频">🎬 视频分类</option>
-                      <option value="音乐">🎵 音乐分类</option>
-                      <option value="图片">🖼️ 图片分类</option>
-                      <option value="文档">📄 文档分类</option>
-                      <option value="其他">📦 其他分类</option>
+                      <option value="视频">🎬 视频分类文件夹</option>
+                      <option value="音乐">🎵 音乐分类文件夹</option>
+                      <option value="图片">🖼️ 图片分类文件夹</option>
+                      <option value="文档">📄 文档分类文件夹</option>
+                      <option value="其他">📦 其他分类文件夹</option>
                     </select>
                     <button
                       onClick={handleBatchMoveCategory}
@@ -1411,27 +1893,43 @@ export const SettingsPage: React.FC = () => {
                   <span>已保存文件列表 ({filteredCloudFiles.length} / {cloudFiles.length} 项)</span>
                 </h3>
 
-                {/* Category Filter Chips */}
-                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
-                  {['全部', '视频', '音乐', '图片', '文档', '其他'].map((cat) => (
+              {/* Category Folder Navigation Tabs & Refresh Full File List Button */}
+              <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={fetchAllR2Files}
+                  className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition-all whitespace-nowrap"
+                  title="强行拉取并可视化所有 R2 存储桶文件"
+                >
+                  <RefreshCw className="w-3 h-3 text-emerald-500" />
+                  <span>刷新全量 R2 云文件</span>
+                </button>
+
+                  {[
+                    { key: '全部', label: '📁 全部文件' },
+                    { key: '视频', label: '🎬 视频文件夹' },
+                    { key: '音乐', label: '🎵 音乐文件夹' },
+                    { key: '图片', label: '🖼️ 图片文件夹' },
+                    { key: '文档', label: '📄 文档文件夹' },
+                    { key: '其他', label: '📦 其他文件夹' },
+                  ].map((cat) => (
                     <button
-                      key={cat}
-                      onClick={() => setSelectedListCategory(cat)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                        selectedListCategory === cat
-                          ? 'bg-sky-500 text-white shadow-sm'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                      key={cat.key}
+                      onClick={() => setSelectedListCategory(cat.key)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all border whitespace-nowrap ${
+                        selectedListCategory === cat.key
+                          ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
                       }`}
                     >
-                      {cat}
+                      {cat.label}
                     </button>
                   ))}
                 </div>
               </div>
 
               {filteredCloudFiles.length > 0 ? (
-                /* 3-Column Large Card Grid Layout (并排三个大图样式) */
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                /* 2-Column Mobile & 3-Column PC Card Grid Layout with Large Previews for Easy Touch Operations */
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                   {filteredCloudFiles.map((file) => {
                     const isSelected = selectedFileIds.includes(file.id);
                     return (
@@ -1443,33 +1941,33 @@ export const SettingsPage: React.FC = () => {
                             : 'border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        {/* Card Large Media Preview Header Area (h-40) */}
-                        <div className="relative w-full h-40 bg-slate-900 overflow-hidden flex items-center justify-center">
+                        {/* Card Media Preview Header Area (h-32 sm:h-36) */}
+                        <div className="relative w-full h-32 sm:h-36 bg-slate-900 overflow-hidden flex items-center justify-center">
                           {/* Checkbox overlay in top left */}
                           <button
                             onClick={() => handleToggleSelectFile(file.id)}
-                            className="absolute top-2.5 left-2.5 z-20 p-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors"
+                            className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-20 p-1 rounded-lg sm:rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors"
                             title={isSelected ? '取消选择' : '勾选选择'}
                           >
                             {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-sky-400" />
+                              <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
                             ) : (
-                              <Square className="w-4 h-4 text-slate-300" />
+                              <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
                             )}
                           </button>
 
-                          {/* Category Badge overlay in top right */}
-                          <div className="absolute top-2.5 right-2.5 z-20">
+                            {/* Category Folder Badge overlay in top right */}
+                          <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-20">
                             <select
                               value={file.category}
                               onChange={(e) => handleSingleMoveCategory(file.id, e.target.value)}
-                              className="px-2 py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[10px] rounded-xl focus:outline-none cursor-pointer"
+                              className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[9px] sm:text-[10px] rounded-lg sm:rounded-xl focus:outline-none cursor-pointer"
                             >
-                              <option value="视频">🎬 视频</option>
-                              <option value="音乐">🎵 音乐</option>
-                              <option value="图片">🖼️ 图片</option>
-                              <option value="文档">📄 文档</option>
-                              <option value="其他">📦 其他</option>
+                                <option value="视频">🎬 视频文件夹</option>
+                                <option value="音乐">🎵 音乐文件夹</option>
+                                <option value="图片">🖼️ 图片文件夹</option>
+                                <option value="文档">📄 文档文件夹</option>
+                                <option value="其他">📦 其他文件夹</option>
                             </select>
                           </div>
 
@@ -1477,23 +1975,23 @@ export const SettingsPage: React.FC = () => {
                           {file.category === '图片' || file.fileType.startsWith('image/') || file.url.startsWith('data:image/') ? (
                             <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : file.category === '视频' || file.fileType.startsWith('video/') || file.url.startsWith('data:video/') ? (
-                            <div className="relative w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
-                              <Video className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono rounded-md">
-                                MP4 媒体视频
+                            <div className="relative w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950 p-1 text-center">
+                              <Video className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
+                                MP4 视频
                               </span>
                             </div>
                           ) : file.category === '音乐' ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 bg-gradient-to-br from-amber-950/40 to-slate-950">
-                              <Music className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono rounded-md">
+                            <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 bg-gradient-to-br from-amber-950/40 to-slate-950 p-1 text-center">
+                              <Music className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
                                 音频原声
                               </span>
                             </div>
                           ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
-                              <FileText className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-mono rounded-md">
+                            <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950 p-1 text-center">
+                              <FileText className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
                                 云盘文件
                               </span>
                             </div>
@@ -1501,44 +1999,53 @@ export const SettingsPage: React.FC = () => {
                         </div>
 
                         {/* Card Details Body */}
-                        <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
-                          <div className="space-y-1">
-                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs" title={file.name}>
+                        <div className="p-2 sm:p-3.5 space-y-1.5 flex-1 flex flex-col justify-between">
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-[11px] sm:text-xs" title={file.name}>
                               {file.name}
                             </p>
-                            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                              <span>大小: {(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
-                              <span className="truncate max-w-[110px]" title={file.uploadDate}>{file.uploadDate}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[9px] sm:text-[10px] text-slate-400 font-mono gap-0.5">
+                              <span>{(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
+                              <span className="truncate max-w-[90px]" title={file.uploadDate}>{file.uploadDate.split(' ')[0] || file.uploadDate}</span>
                             </div>
                           </div>
 
-                          {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete) */}
-                          <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-1 text-[11px]">
+                          {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete, Share to Public Showcase) */}
+                          <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-6 gap-0.5 sm:gap-1 text-[9px] sm:text-[11px]">
                             <button
                               onClick={() => setPreviewFile(file)}
-                              className="p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="在线预览"
                             >
-                              <Eye className="w-3.5 h-3.5 mb-0.5" />
-                              <span>预览</span>
+                              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">预览</span>
                             </button>
 
                             <button
                               onClick={() => handleDownloadFileWithProgress(file)}
-                              className="p-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="极速下载"
                             >
-                              <Download className="w-3.5 h-3.5 mb-0.5" />
-                              <span>{downloadProgressMap[file.id] !== undefined ? `${downloadProgressMap[file.id]}%` : '下载'}</span>
+                              <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">{downloadProgressMap[file.id] !== undefined ? `${downloadProgressMap[file.id]}%` : '下载'}</span>
                             </button>
 
                             <button
                               onClick={() => handleCopyShareLink(file)}
-                              className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="分享外链"
                             >
-                              {copiedShareId === file.id ? <CheckCircle2 className="w-3.5 h-3.5 mb-0.5" /> : <Share2 className="w-3.5 h-3.5 mb-0.5" />}
-                              <span>{copiedShareId === file.id ? '已复制' : '分享'}</span>
+                              {copiedShareId === file.id ? <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                              <span className="hidden sm:inline mt-0.5">{copiedShareId === file.id ? '已复制' : '分享'}</span>
+                            </button>
+
+                            <button
+                              onClick={() => shareToPublicShowcase(file)}
+                              className="p-1 sm:p-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              title="一键分享至公共展示区"
+                            >
+                              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">展示</span>
                             </button>
 
                             <button
@@ -1546,20 +2053,20 @@ export const SettingsPage: React.FC = () => {
                                 setRenameModalFile(file);
                                 setRenameInput(file.name);
                               }}
-                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="重命名"
                             >
-                              <Edit3 className="w-3.5 h-3.5 mb-0.5" />
-                              <span>改名</span>
+                              <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">改名</span>
                             </button>
 
                             <button
                               onClick={() => handleDeleteCloudFile(file.id)}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="删除文件"
                             >
-                              <Trash2 className="w-3.5 h-3.5 mb-0.5" />
-                              <span>删除</span>
+                              <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">删除</span>
                             </button>
                           </div>
                         </div>
@@ -1570,6 +2077,362 @@ export const SettingsPage: React.FC = () => {
               ) : (
                 <p className="text-center py-6 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                   暂无已上传储存的文件，可点击上方按钮选择本地文件上传储存
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+      )}
+
+      {/* Notebook / Notepad Section (随身云笔记本) */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <BookOpen className="w-6 h-6 text-sky-500" />
+            <h2>随身云笔记本 ({notesList.length} 条笔记)</h2>
+          </div>
+
+          <button
+            onClick={() => toggleSection('notebook')}
+            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
+          >
+            {isExpanded('notebook') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('notebook') ? '收起笔记本 ▲' : '展开笔记本 ▼'}</span>
+          </button>
+        </div>
+
+        {isExpanded('notebook') && (
+          <div className="space-y-6 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              记录观影清单、影视网址备忘或个人云端笔记。支持与 Cloudflare D1 数据库云端同步（新数据覆盖老数据）。
+            </p>
+
+            {/* Note Input / Edit Form */}
+            <form onSubmit={handleSaveNote} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <input
+                  type="text"
+                  value={noteTitleInput}
+                  onChange={(e) => setNoteTitleInput(e.target.value)}
+                  placeholder="笔记标题 (如: 追剧备忘清单 / 极速源站网址)"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+
+                <select
+                  value={noteCategoryInput}
+                  onChange={(e) => setNoteCategoryInput(e.target.value)}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                >
+                  <option value="默认">📝 默认分类</option>
+                  <option value="观影笔记">🎬 观影笔记</option>
+                  <option value="网址清单">🌐 网址清单</option>
+                  <option value="灵感备忘">💡 灵感备忘</option>
+                </select>
+              </div>
+
+              <textarea
+                value={noteContentInput}
+                onChange={(e) => setNoteContentInput(e.target.value)}
+                placeholder="请输入笔记详细内容..."
+                rows={4}
+                className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none font-medium"
+              />
+
+              <div className="flex items-center justify-between pt-1">
+                {editingNoteId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitleInput('');
+                      setNoteContentInput('');
+                    }}
+                    className="px-3.5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    取消编辑
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-slate-400">💡 提示：点击笔记可随时编辑或删除</span>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!noteTitleInput.trim() && !noteContentInput.trim()}
+                  className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{editingNoteId ? '更新并保存笔记' : '保存新笔记'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Note Search & Filters Bar */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <input
+                  type="text"
+                  value={noteSearchQuery}
+                  onChange={(e) => setNoteSearchQuery(e.target.value)}
+                  placeholder="搜索随身笔记..."
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+
+              {notesList.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('确定要清空所有笔记吗？')) {
+                      clearNotes();
+                    }
+                  }}
+                  className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>清空笔记本</span>
+                </button>
+              )}
+            </div>
+
+            {/* Notes List Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredNotes.length > 0 ? (
+                filteredNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between transition-all hover:shadow-md group"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 truncate pr-2">
+                          {note.title}
+                        </span>
+                        <span className="px-2 py-0.5 bg-sky-500/10 text-sky-500 text-[10px] font-bold rounded-lg flex-shrink-0">
+                          {note.category || '默认'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-4 whitespace-pre-wrap font-medium">
+                        {note.content}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[10px] text-slate-400 font-mono">
+                      <span>{note.updatedAt}</span>
+
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => handleDownloadNoteTxt(note)}
+                          className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center space-x-0.5"
+                          title="导出下载为 TXT 文本文件"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-bold">TXT</span>
+                        </button>
+                        <button
+                          onClick={() => handleEditNote(note)}
+                          className="p-1 text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors"
+                          title="编辑笔记"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteNote(note.id)}
+                          className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="删除笔记"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="col-span-full text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                  暂无匹配的随身笔记，在上方新建您的第一条笔记吧！
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Community Message Board Area (留言区 - 全员互动与图片发布) */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <MessageSquare className="w-6 h-6 text-sky-500" />
+            <h2>全员留言与交流区 ({messagesList.length} 条留言)</h2>
+          </div>
+
+          <button
+            onClick={() => toggleSection('message_board')}
+            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
+          >
+            {isExpanded('message_board') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('message_board') ? '收起留言区 ▲' : '展开留言区 ▼'}</span>
+          </button>
+        </div>
+
+        {isExpanded('message_board') && (
+          <div className="space-y-6 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              欢迎在此留言与分享！您可以发表文字并附带图片，留言全员实时可见。管理员可对留言中的图片进行单项清理以释放空间。
+            </p>
+
+            {/* Message Input Box */}
+            <form id="community-message-form" onSubmit={handleSendCommunityMessage} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                <User className="w-4 h-4 text-sky-500" />
+                <span>当前发言身份: <span className="text-sky-500">{currentUser || '匿名访客'}</span></span>
+              </div>
+
+              {replyTarget && (
+                <div className="flex items-center justify-between p-2.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-500/30 rounded-xl text-xs">
+                  <span className="text-slate-700 dark:text-slate-300 font-medium truncate pr-2">
+                    正在回复 <b className="text-sky-500">@{replyTarget.username}</b>: “{replyTarget.content}”
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTarget(null)}
+                    className="p-1 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="取消回复"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <textarea
+                value={msgInputText}
+                onChange={(e) => setMsgInputText(e.target.value)}
+                placeholder={replyTarget ? `回复 @${replyTarget.username}...` : "请输入您的留言内容或分享想法..."}
+                rows={3}
+                className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none font-medium"
+              />
+
+              {/* Image Preview & Attachment Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex items-center space-x-3">
+                  <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-200/80 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all">
+                    <ImageIcon className="w-4 h-4 text-sky-500" />
+                    <span>{msgAttachedImage ? '更换图片' : '添加配图照片'}</span>
+                    <input type="file" accept="image/*" onChange={handleMessageImageUpload} className="hidden" />
+                  </label>
+
+                  {msgAttachedImage && (
+                    <div className="relative group flex items-center space-x-2">
+                      <img src={msgAttachedImage} alt="配图预览" className="w-10 h-10 object-cover rounded-lg border border-sky-500" />
+                      <button
+                        type="button"
+                        onClick={() => setMsgAttachedImage(null)}
+                        className="p-1 text-red-500 hover:bg-red-500/10 rounded-lg text-xs"
+                        title="移除此图片"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!msgInputText.trim() && !msgAttachedImage}
+                  className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>发布留言</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Messages Display List */}
+            <div className="space-y-3">
+              {messagesList.length > 0 ? (
+                messagesList.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2.5 transition-all shadow-sm hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between text-xs border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center space-x-1">
+                          <User className="w-3.5 h-3.5 text-sky-500" />
+                          <span>{msg.username}</span>
+                        </span>
+                        {msg.username === 'admin' && (
+                          <span className="px-1.5 py-0.5 bg-fox-500/10 text-fox-500 text-[10px] font-extrabold rounded">
+                            管理员
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{msg.createdAt}</span>
+
+                        <button
+                          onClick={() => {
+                            setReplyTarget({ id: msg.id, username: msg.username, content: msg.content });
+                          }}
+                          className="px-2 py-0.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-lg font-bold flex items-center space-x-1 transition-colors"
+                        >
+                          <span>回复</span>
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => deleteMessage(msg.id)}
+                            className="p-1 text-slate-400 hover:text-red-500 transition-colors ml-1"
+                            title="管理员删除整条留言"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Reply Quote Banner */}
+                    {msg.replyToUser && (
+                      <div className="p-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl text-[11px] text-slate-600 dark:text-slate-300 border-l-2 border-sky-500 font-medium">
+                        <span className="font-bold text-sky-500">@{msg.replyToUser}:</span> {msg.replyToContent || '回复原留言'}
+                      </div>
+                    )}
+
+                    {/* Message Content Text */}
+                    {msg.content && (
+                      <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-medium leading-relaxed">
+                        {msg.content}
+                      </p>
+                    )}
+
+                    {/* Message Image Attachment */}
+                    {msg.imageUrl && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="relative inline-block max-w-sm rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black/10">
+                          <img src={msg.imageUrl} alt="留言附图" className="max-h-60 object-contain rounded-xl" />
+                        </div>
+
+                        {/* Admin Image Deletion Control to Save Space */}
+                        {isAdmin && (
+                          <div>
+                            <button
+                              onClick={() => deleteMessageImage(msg.id)}
+                              className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition-colors"
+                            >
+                              <ImageOff className="w-3.5 h-3.5 text-amber-500" />
+                              <span>管理员仅删除配图 (释放储存空间)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                  留言板暂无留言，抢先发表第一条留言吧！
                 </p>
               )}
             </div>
@@ -1667,38 +2530,6 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Global Restore Defaults */}
-      <section className="bg-red-500/5 dark:bg-red-950/10 border border-red-500/20 rounded-3xl p-6 sm:p-8 space-y-4">
-        <div className="flex items-center justify-between border-b border-red-500/10 pb-3">
-          <h2 className="text-base font-bold text-red-500">恢复出厂设置</h2>
-          <button
-            onClick={() => toggleSection('restore')}
-            className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-          >
-            {collapsedSections['restore'] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            <span>{collapsedSections['restore'] ? '展开界面 ▼' : '收起界面 ▲'}</span>
-          </button>
-        </div>
-
-        {!collapsedSections['restore'] && (
-          <div className="space-y-4 animate-fadeIn">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              清除本地所有浏览历史、追剧收藏、主页自定义壁纸、访问密码、自定 API 接口配置，并恢复出厂默认状态。
-            </p>
-            <button
-              onClick={() => {
-                if (window.confirm('确定要恢复默认设置吗？此操作将清除所有历史记录与自定配置。')) {
-                  restoreDefaultSettings();
-                  alert('恢复出厂设置成功！');
-                }
-              }}
-              className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl text-xs shadow-md shadow-red-500/20 transition-colors"
-            >
-              恢复默认设置
-            </button>
-          </div>
-        )}
-      </section>
     </div>
   );
 };

@@ -70,8 +70,14 @@ export async function onRequest(context: any) {
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
-    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
-    responseHeaders.set('Cache-Control', 'public, max-age=86400');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges, X-R2-Cache');
+    if (targetUrl.includes('.m3u8')) {
+      responseHeaders.set('Cache-Control', 'public, max-age=300'); // Index/Manifest 5 mins
+    } else if (targetUrl.includes('.ts') || targetUrl.includes('.m4s') || targetUrl.includes('.mp4')) {
+      responseHeaders.set('Cache-Control', 'public, max-age=2592000, immutable'); // Segments 30 days
+    } else {
+      responseHeaders.set('Cache-Control', 'public, max-age=86400');
+    }
 
     // Store fetched segment into R2 cache when available
     if (r2Bucket && response.status === 200 && (targetUrl.includes('.ts') || targetUrl.includes('.m4s') || targetUrl.includes('.mp4'))) {

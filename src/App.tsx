@@ -12,7 +12,7 @@ import { FavoritesPage } from './pages/FavoritesPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 const ProtectedLayout: React.FC = () => {
-  const { isUnlocked, customBgColor, customBgImage } = useApp();
+  const { isUnlocked, customBgColor, customBgImage, deviceViewMode } = useApp();
 
   const containerStyle: React.CSSProperties = {
     backgroundColor: customBgColor || undefined,
@@ -20,6 +20,16 @@ const ProtectedLayout: React.FC = () => {
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundAttachment: 'fixed',
+  };
+
+  const getMainContainerClass = () => {
+    if (deviceViewMode === 'mobile') {
+      return 'flex-1 max-w-sm w-full mx-auto px-3 pt-4 border-x border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 shadow-2xl rounded-3xl my-2 overflow-hidden';
+    }
+    if (deviceViewMode === 'desktop') {
+      return 'flex-1 max-w-[1400px] w-full mx-auto px-6 lg:px-10 pt-6';
+    }
+    return 'flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6';
   };
 
   return (
@@ -30,7 +40,7 @@ const ProtectedLayout: React.FC = () => {
       } text-slate-900 dark:text-slate-100 transition-colors duration-200`}
     >
       <Navbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className={getMainContainerClass()}>
         {isUnlocked ? (
           <Routes>
             <Route path="/" element={<HomePage />} />

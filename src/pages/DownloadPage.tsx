@@ -199,7 +199,7 @@ export const DownloadPage: React.FC = () => {
         </div>
         <ul className="list-disc list-inside space-y-1 leading-relaxed">
           <li>M3U8 切片视频文件建议使用 NDM、IDM 或 M3U8 Downloader 多线程下载器复制链接后批量下载。</li>
-          <li>若在线播放出现跨域，可在播放卡片中开启【极速代理反查】突破源站限制。</li>
+          <li>平台内置全自动跨域防护，若遇慢速网络可开启【预加载缓存】提升播放流畅度。</li>
         </ul>
       </div>
     </div>

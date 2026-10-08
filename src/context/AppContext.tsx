@@ -10,6 +10,8 @@ export interface WatchHistoryItem {
   source_name: string;
   episode_name?: string;
   episode_url?: string;
+  episode_index?: number;
+  last_time?: number;
   progress?: number;
   updated_at: number;
 }
@@ -26,6 +28,21 @@ export interface FavoriteItem {
   created_at: number;
 }
 
+export interface NoteItem {
+  id: string;
+  title: string;
+  content: string;
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CloudFolderItem {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface UserDeviceItem {
   id: string;
   username: string;
@@ -36,9 +53,14 @@ export interface UserDeviceItem {
 }
 
 export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
-export type AppLanguage = 'zh' | 'en' | 'zh-TW' | 'ja' | 'ko' | 'es';
+export type AppLanguage = 'zh' | 'en';
+export type DeviceViewMode = 'auto' | 'mobile' | 'desktop';
 
 interface AppContextType {
+  // Device View Mode (Mobile / PC Switcher)
+  deviceViewMode: DeviceViewMode;
+  setDeviceViewMode: (mode: DeviceViewMode) => void;
+  toggleDeviceViewMode: () => void;
   // Language Switcher
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
@@ -103,10 +125,33 @@ interface AppContextType {
   // Global Reset
   restoreDefaultSettings: () => void;
 
-  // D1 DB
+  // Public Showcase Area Shared Files & Community Message Board
+  publicSharedFiles: any[];
+  shareToPublicShowcase: (file: any) => void;
+  removeFromPublicShowcase: (fileId: string) => void;
+
+  messagesList: { id: string; username: string; content: string; imageUrl?: string; createdAt: string; replyToUser?: string; replyToContent?: string }[];
+  addMessage: (content: string, imageUrl?: string, replyToUser?: string, replyToContent?: string) => void;
+  deleteMessage: (id: string) => void;
+  deleteMessageImage: (id: string) => void;
+
+  // Notebook / Notes Management
+  notesList: NoteItem[];
+  addNote: (title: string, content: string, category?: string) => void;
+  updateNote: (id: string, title: string, content: string, category?: string) => void;
+  deleteNote: (id: string) => void;
+  clearNotes: () => void;
+
+  // R2 Folders Management
+  cloudFolders: CloudFolderItem[];
+  addFolder: (name: string) => void;
+  deleteFolder: (folderId: string) => void;
+
+  // D1 DB & R2 Sync (New Data Overwrites Old Data)
   d1Enabled: boolean;
   setD1Enabled: (enabled: boolean) => void;
   manualSyncD1: () => Promise<boolean>;
+  syncR2CloudDrive: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -173,9 +218,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [{ username: 'admin', created_at: Date.now() }];
   });
 
-  // Language State
+  // Language State (Chinese-English Bilingual)
   const [language, setLanguageState] = useState<AppLanguage>(() => {
-    return (localStorage.getItem(STORAGE_KEYS.LANG) as AppLanguage) || 'zh';
+    const saved = localStorage.getItem(STORAGE_KEYS.LANG);
+    return saved === 'en' ? 'en' : 'zh';
   });
 
   // Theme State (Dark / Light Mode)
@@ -209,6 +255,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Adult Section State
+  // Device View Mode State ('auto' | 'mobile' | 'desktop')
+  const [deviceViewMode, setDeviceViewModeState] = useState<DeviceViewMode>(() => {
+    return (localStorage.getItem('wf_device_view_mode') as DeviceViewMode) || 'auto';
+  });
+
+  const setDeviceViewMode = (mode: DeviceViewMode) => {
+    setDeviceViewModeState(mode);
+    localStorage.setItem('wf_device_view_mode', mode);
+  };
+
+  const toggleDeviceViewMode = () => {
+    setDeviceViewModeState((prev) => {
+      const next = prev === 'auto' ? 'mobile' : prev === 'mobile' ? 'desktop' : 'auto';
+      localStorage.setItem('wf_device_view_mode', next);
+      return next;
+    });
+  };
+
   const [showAdultColumn, setShowAdultColumnState] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.ADULT) === 'true';
   });
@@ -218,6 +282,107 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem(STORAGE_KEYS.HISTORY);
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Public Showcase Shared Files State
+  const [publicSharedFiles, setPublicSharedFiles] = useState<any[]>(() => {
+    const saved = localStorage.getItem('wf_public_shared_files');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Message Board State
+  const [messagesList, setMessagesList] = useState<
+    { id: string; username: string; content: string; imageUrl?: string; createdAt: string; replyToUser?: string; replyToContent?: string }[]
+  >(() => {
+    const saved = localStorage.getItem('wf_messages_list');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Notebook / Notes State
+  const [notesList, setNotesList] = useState<NoteItem[]>(() => {
+    const saved = localStorage.getItem('wf_notes_list');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'note_default_1',
+        title: '欢迎使用白狐5 随身云笔记本',
+        content: '这是一个支持 Cloudflare D1 数据库实时云端备份与多端同步的文本笔记本。您可以记录观影笔记、影视网址清单或个人随想。',
+        category: '默认',
+        createdAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        updatedAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      }
+    ];
+  });
+
+  // R2 Cloud Folders State
+  const [cloudFolders, setCloudFolders] = useState<CloudFolderItem[]>(() => {
+    const saved = localStorage.getItem('wf_cloud_folders');
+    return saved ? JSON.parse(saved) : [
+      { id: 'folder_video', name: '电影电视剧集', createdAt: '2025-01-01' },
+      { id: 'folder_music', name: '无损音乐专区', createdAt: '2025-01-01' },
+      { id: 'folder_doc', name: '办公与电子书', createdAt: '2025-01-01' },
+    ];
+  });
+
+  const addMessage = (content: string, imageUrl?: string, replyToUser?: string, replyToContent?: string) => {
+    if (!content.trim() && !imageUrl) return;
+    const author = currentUser || '匿名访客';
+    const newMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      username: author,
+      content: content.trim(),
+      imageUrl: imageUrl || undefined,
+      replyToUser: replyToUser || undefined,
+      replyToContent: replyToContent || undefined,
+      createdAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }),
+    };
+
+    setMessagesList((prev) => {
+      const updated = [newMessage, ...prev];
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
+  const deleteMessage = (id: string) => {
+    setMessagesList((prev) => {
+      const updated = prev.filter((m) => m.id !== id);
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
+  const deleteMessageImage = (id: string) => {
+    setMessagesList((prev) => {
+      const updated = prev.map((m) => (m.id === id ? { ...m, imageUrl: undefined } : m));
+      localStorage.setItem('wf_messages_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        syncToD1('wf_messages_board', updated);
+      }
+      return updated;
+    });
+  };
+
+  const shareToPublicShowcase = (file: any) => {
+    setPublicSharedFiles((prev) => {
+      if (prev.some((f) => f.id === file.id)) return prev;
+      const updated = [{ ...file, sharedAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) }, ...prev];
+      localStorage.setItem('wf_public_shared_files', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromPublicShowcase = (fileId: string) => {
+    setPublicSharedFiles((prev) => {
+      const updated = prev.filter((f) => f.id !== fileId);
+      localStorage.setItem('wf_public_shared_files', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Favorites State
   const [favoritesList, setFavoritesList] = useState<FavoriteItem[]>(() => {
@@ -273,9 +438,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (typeof data.r2EgressUsageGB === 'number') {
             localStorage.setItem('wf_r2_egress_gb', data.r2EgressUsageGB.toString());
           }
+          // New Data Overwrites Old Data mode for cloudFiles, cloudFolders, and notes
           if (Array.isArray(data.cloudFiles)) {
             localStorage.setItem('wf_cloud_files', JSON.stringify(data.cloudFiles));
           }
+          if (Array.isArray(data.cloudFolders)) {
+            setCloudFolders(data.cloudFolders);
+            localStorage.setItem('wf_cloud_folders', JSON.stringify(data.cloudFolders));
+          }
+          if (Array.isArray(data.notesList)) {
+            setNotesList(data.notesList);
+            localStorage.setItem('wf_notes_list', JSON.stringify(data.notesList));
+          }
+        }
+      });
+
+      fetchFromD1('wf_messages_board').then((msgs) => {
+        if (Array.isArray(msgs)) {
+          setMessagesList(msgs);
+          localStorage.setItem('wf_messages_list', JSON.stringify(msgs));
         }
       });
     }
@@ -609,16 +790,164 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.D1_ENABLED, enabled ? 'true' : 'false');
   };
 
-  const manualSyncD1 = async (): Promise<boolean> => {
+  // Notebook Actions
+  const addNote = (title: string, content: string, category = '默认') => {
+    const nowStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    const newNote: NoteItem = {
+      id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      title: title.trim() || '无标题笔记',
+      content: content.trim(),
+      category,
+      createdAt: nowStr,
+      updatedAt: nowStr,
+    };
+    setNotesList((prev) => {
+      const updated = [newNote, ...prev];
+      localStorage.setItem('wf_notes_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+        syncToD1(syncKey, {
+          history: historyList,
+          favorites: favoritesList,
+          resolution: defaultResolution,
+          bgColor: customBgColor,
+          bgImage: customBgImage,
+          heroBgImage: customHeroBgImage,
+          notesList: updated,
+          cloudFolders,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const updateNote = (id: string, title: string, content: string, category?: string) => {
+    const nowStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    setNotesList((prev) => {
+      const updated = prev.map((n) =>
+        n.id === id
+          ? { ...n, title: title.trim() || '无标题笔记', content: content.trim(), category: category || n.category, updatedAt: nowStr }
+          : n
+      );
+      localStorage.setItem('wf_notes_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+        syncToD1(syncKey, {
+          history: historyList,
+          favorites: favoritesList,
+          resolution: defaultResolution,
+          bgColor: customBgColor,
+          bgImage: customBgImage,
+          heroBgImage: customHeroBgImage,
+          notesList: updated,
+          cloudFolders,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const deleteNote = (id: string) => {
+    setNotesList((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      localStorage.setItem('wf_notes_list', JSON.stringify(updated));
+      if (d1Enabled) {
+        const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+        syncToD1(syncKey, {
+          history: historyList,
+          favorites: favoritesList,
+          resolution: defaultResolution,
+          bgColor: customBgColor,
+          bgImage: customBgImage,
+          heroBgImage: customHeroBgImage,
+          notesList: updated,
+          cloudFolders,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const clearNotes = () => {
+    setNotesList([]);
+    localStorage.removeItem('wf_notes_list');
+    if (d1Enabled) {
+      const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+      syncToD1(syncKey, {
+        history: historyList,
+        favorites: favoritesList,
+        resolution: defaultResolution,
+        bgColor: customBgColor,
+        bgImage: customBgImage,
+        heroBgImage: customHeroBgImage,
+        notesList: [],
+        cloudFolders,
+      });
+    }
+  };
+
+  // Folder Actions
+  const addFolder = (name: string) => {
+    if (!name.trim()) return;
+    const nowStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    const newFolder: CloudFolderItem = {
+      id: `folder_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: name.trim(),
+      createdAt: nowStr.split(' ')[0] || nowStr,
+    };
+    setCloudFolders((prev) => {
+      const updated = [...prev, newFolder];
+      localStorage.setItem('wf_cloud_folders', JSON.stringify(updated));
+      if (d1Enabled) {
+        const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+        syncToD1(syncKey, {
+          history: historyList,
+          favorites: favoritesList,
+          resolution: defaultResolution,
+          bgColor: customBgColor,
+          bgImage: customBgImage,
+          heroBgImage: customHeroBgImage,
+          notesList,
+          cloudFolders: updated,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const deleteFolder = (folderId: string) => {
+    setCloudFolders((prev) => {
+      const updated = prev.filter((f) => f.id !== folderId);
+      localStorage.setItem('wf_cloud_folders', JSON.stringify(updated));
+      if (d1Enabled) {
+        const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+        syncToD1(syncKey, {
+          history: historyList,
+          favorites: favoritesList,
+          resolution: defaultResolution,
+          bgColor: customBgColor,
+          bgImage: customBgImage,
+          heroBgImage: customHeroBgImage,
+          notesList,
+          cloudFolders: updated,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const syncR2CloudDrive = async (): Promise<boolean> => {
     const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
-    const r2Usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.00');
     let cloudFilesSaved = [];
     try {
       cloudFilesSaved = JSON.parse(localStorage.getItem('wf_cloud_files') || '[]');
     } catch {
       cloudFilesSaved = [];
     }
-    return await syncToD1(syncKey, {
+    const r2Usage = parseFloat(localStorage.getItem('wf_r2_egress_gb') || '0.00');
+
+    // Overwrite mode
+    const success = await syncToD1(syncKey, {
       history: historyList,
       favorites: favoritesList,
       resolution: defaultResolution,
@@ -627,7 +956,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       heroBgImage: customHeroBgImage,
       r2EgressUsageGB: r2Usage,
       cloudFiles: cloudFilesSaved,
+      cloudFolders,
+      notesList,
     });
+    return success;
+  };
+
+  const manualSyncD1 = async (): Promise<boolean> => {
+    return await syncR2CloudDrive();
   };
 
   const restoreDefaultSettings = () => {
@@ -651,6 +987,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        deviceViewMode,
+        setDeviceViewMode,
+        toggleDeviceViewMode,
         isUnlocked,
         verifyPassword,
         setPassword,
@@ -694,9 +1033,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFavorite,
         clearFavorites,
         restoreDefaultSettings,
+        publicSharedFiles,
+        shareToPublicShowcase,
+        removeFromPublicShowcase,
+        messagesList,
+        addMessage,
+        deleteMessage,
+        deleteMessageImage,
+        notesList,
+        addNote,
+        updateNote,
+        deleteNote,
+        clearNotes,
+        cloudFolders,
+        addFolder,
+        deleteFolder,
         d1Enabled,
         setD1Enabled,
         manualSyncD1,
+        syncR2CloudDrive,
       }}
     >
       {children}

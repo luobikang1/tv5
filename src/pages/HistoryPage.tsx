@@ -55,6 +55,11 @@ export const HistoryPage: React.FC = () => {
                     <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-medium">
                       {item.episode_name || '上次观看'}
                     </span>
+                    {item.last_time && item.last_time > 0 ? (
+                      <span className="px-2 py-0.5 rounded bg-fox-500/10 text-fox-500 font-mono font-bold">
+                        {Math.floor(item.last_time / 60).toString().padStart(2, '0')}:{(item.last_time % 60).toString().padStart(2, '0')}
+                      </span>
+                    ) : null}
                     <span>·</span>
                     <span>{item.source_name}</span>
                   </div>
