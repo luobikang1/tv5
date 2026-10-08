@@ -1678,8 +1678,8 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               {filteredCloudFiles.length > 0 ? (
-                /* 3-Column Card Grid Layout optimized for all screen sizes including mobile (grid-cols-3) */
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                /* 2-Column Mobile & 3-Column PC Card Grid Layout with Large Previews for Easy Touch Operations */
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                   {filteredCloudFiles.map((file) => {
                     const isSelected = selectedFileIds.includes(file.id);
                     return (
@@ -1691,8 +1691,8 @@ export const SettingsPage: React.FC = () => {
                             : 'border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        {/* Card Media Preview Header Area (h-24 sm:h-36) */}
-                        <div className="relative w-full h-24 sm:h-36 bg-slate-900 overflow-hidden flex items-center justify-center">
+                        {/* Card Media Preview Header Area (h-32 sm:h-36) */}
+                        <div className="relative w-full h-32 sm:h-36 bg-slate-900 overflow-hidden flex items-center justify-center">
                           {/* Checkbox overlay in top left */}
                           <button
                             onClick={() => handleToggleSelectFile(file.id)}
