@@ -128,8 +128,8 @@ interface AppContextType {
   shareToPublicShowcase: (file: any) => void;
   removeFromPublicShowcase: (fileId: string) => void;
 
-  messagesList: { id: string; username: string; content: string; imageUrl?: string; createdAt: string }[];
-  addMessage: (content: string, imageUrl?: string) => void;
+  messagesList: { id: string; username: string; content: string; imageUrl?: string; createdAt: string; replyToUser?: string; replyToContent?: string }[];
+  addMessage: (content: string, imageUrl?: string, replyToUser?: string, replyToContent?: string) => void;
   deleteMessage: (id: string) => void;
   deleteMessageImage: (id: string) => void;
 
@@ -289,7 +289,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Message Board State
   const [messagesList, setMessagesList] = useState<
-    { id: string; username: string; content: string; imageUrl?: string; createdAt: string }[]
+    { id: string; username: string; content: string; imageUrl?: string; createdAt: string; replyToUser?: string; replyToContent?: string }[]
   >(() => {
     const saved = localStorage.getItem('wf_messages_list');
     return saved ? JSON.parse(saved) : [];
@@ -320,7 +320,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
   });
 
-  const addMessage = (content: string, imageUrl?: string) => {
+  const addMessage = (content: string, imageUrl?: string, replyToUser?: string, replyToContent?: string) => {
     if (!content.trim() && !imageUrl) return;
     const author = currentUser || '匿名访客';
     const newMessage = {
@@ -328,6 +328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       username: author,
       content: content.trim(),
       imageUrl: imageUrl || undefined,
+      replyToUser: replyToUser || undefined,
+      replyToContent: replyToContent || undefined,
       createdAt: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }),
     };
 

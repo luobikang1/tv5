@@ -145,6 +145,7 @@ export const SettingsPage: React.FC = () => {
   // Message Board State
   const [msgInputText, setMsgInputText] = useState('');
   const [msgAttachedImage, setMsgAttachedImage] = useState<string | null>(null);
+  const [replyTarget, setReplyTarget] = useState<{ id: string; username: string; content: string } | null>(null);
 
   const handleMessageImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -163,9 +164,15 @@ export const SettingsPage: React.FC = () => {
   const handleSendCommunityMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!msgInputText.trim() && !msgAttachedImage) return;
-    addMessage(msgInputText, msgAttachedImage || undefined);
+    addMessage(
+      msgInputText,
+      msgAttachedImage || undefined,
+      replyTarget?.username,
+      replyTarget?.content
+    );
     setMsgInputText('');
     setMsgAttachedImage(null);
+    setReplyTarget(null);
   };
 
   const [newPasswordInput, setNewPasswordInput] = useState(currentPassword);
@@ -330,6 +337,19 @@ export const SettingsPage: React.FC = () => {
     setNoteCategoryInput(note.category || '默认');
   };
 
+  const handleDownloadNoteTxt = (note: any) => {
+    const textContent = `======== ${note.title || '无标题笔记'} ========\n分类: ${note.category || '默认'}\n时间: ${note.updatedAt || ''}\n\n${note.content || ''}\n`;
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${note.title || '随身笔记'}_${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(downloadUrl);
+  };
+
   const filteredNotes = notesList.filter((n) =>
     noteSearchQuery
       ? n.title.toLowerCase().includes(noteSearchQuery.toLowerCase()) ||
@@ -356,100 +376,94 @@ export const SettingsPage: React.FC = () => {
   const usedGB = usedMB / 1024;
   const remainingGB = Math.max(0, totalGB - usedGB);
 
-  const handleLocalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files);
     setUploading(true);
     setUploadProgress(0);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('category', fileCategory);
+    let currentFiles = [...cloudFiles];
+    let totalAddedBytes = 0;
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/r2/storage', true);
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', fileCategory);
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
-      setUploadProgress(100);
       try {
-        const data = JSON.parse(xhr.responseText);
-        if (data.success && data.file) {
-              const newFileItem: StoredCloudFile = {
-                ...data.file,
-                uploadDate: getBeijingTimeString(),
-              };
-          const updated = [newFileItem, ...cloudFiles];
-          setCloudFiles(updated);
-          localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+        const res = await new Promise<StoredCloudFile>((resolve) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/r2/storage', true);
 
-          const addedGB = file.size / (1024 * 1024 * 1024);
-          const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
-          setR2EgressUsageGB(newEgressGB);
-          localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
-        } else {
-          const blobUrl = URL.createObjectURL(file);
-          const newFileItem: StoredCloudFile = {
-            id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            name: file.name,
-            sizeBytes: file.size,
-            category: fileCategory,
-                uploadDate: getBeijingTimeString(),
-            url: blobUrl,
-            fileType: file.type || 'application/octet-stream',
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const filePercent = event.loaded / event.total;
+              const overallPercent = Math.round(((i + filePercent) / fileList.length) * 100);
+              setUploadProgress(overallPercent);
+            }
           };
-          const updated = [newFileItem, ...cloudFiles];
-          setCloudFiles(updated);
-              localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
-        }
-      } catch {
-        const blobUrl = URL.createObjectURL(file);
-        const newFileItem: StoredCloudFile = {
-          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
-          sizeBytes: file.size,
-          category: fileCategory,
-              uploadDate: getBeijingTimeString(),
-          url: blobUrl,
-          fileType: file.type || 'application/octet-stream',
-        };
-        const updated = [newFileItem, ...cloudFiles];
-        setCloudFiles(updated);
-            localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
-      } finally {
-        setTimeout(() => {
-          setUploading(false);
-          setUploadProgress(0);
-        }, 500);
-      }
-    };
 
-    xhr.onerror = () => {
-      const blobUrl = URL.createObjectURL(file);
-      const newFileItem: StoredCloudFile = {
-        id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        name: file.name,
-        sizeBytes: file.size,
-        category: fileCategory,
-            uploadDate: getBeijingTimeString(),
-        url: blobUrl,
-        fileType: file.type || 'application/octet-stream',
-      };
-      const updated = [newFileItem, ...cloudFiles];
-      setCloudFiles(updated);
-          localStorage.setItem('wf_cloud_files', JSON.stringify(updated));
+          xhr.onload = () => {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (data.success && data.file) {
+                resolve({
+                  ...data.file,
+                  uploadDate: getBeijingTimeString(),
+                });
+                return;
+              }
+            } catch {}
+            const blobUrl = URL.createObjectURL(file);
+            resolve({
+              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: file.name,
+              sizeBytes: file.size,
+              category: fileCategory,
+              uploadDate: getBeijingTimeString(),
+              url: blobUrl,
+              fileType: file.type || 'application/octet-stream',
+            });
+          };
+
+          xhr.onerror = () => {
+            const blobUrl = URL.createObjectURL(file);
+            resolve({
+              id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              name: file.name,
+              sizeBytes: file.size,
+              category: fileCategory,
+              uploadDate: getBeijingTimeString(),
+              url: blobUrl,
+              fileType: file.type || 'application/octet-stream',
+            });
+          };
+
+          xhr.send(formData);
+        });
+
+        currentFiles = [res, ...currentFiles];
+        totalAddedBytes += file.size;
+        setCloudFiles(currentFiles);
+        localStorage.setItem('wf_cloud_files', JSON.stringify(currentFiles));
+      } catch {
+        // Continue with remaining files
+      }
+    }
+
+    const addedGB = totalAddedBytes / (1024 * 1024 * 1024);
+    const newEgressGB = Math.min(10.0, r2EgressUsageGB + addedGB);
+    setR2EgressUsageGB(newEgressGB);
+    localStorage.setItem('wf_r2_egress_gb', newEgressGB.toString());
+
+    setUploadProgress(100);
+    setTimeout(() => {
       setUploading(false);
       setUploadProgress(0);
-    };
-
-    xhr.send(formData);
+    }, 500);
   };
 
   const handleDownloadFileWithProgress = (file: StoredCloudFile) => {
@@ -898,14 +912,30 @@ export const SettingsPage: React.FC = () => {
                 </label>
               </div>
 
-              {/* Custom Hero Banner Photo Upload */}
+              {/* Custom Hero Banner Photo Upload & Full Image Mode Toggle */}
               <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">首页介绍区照片</label>
-                <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
-                  <Sparkles className="w-4 h-4" />
-                  <span>上传介绍区照片</span>
-                  <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className="cursor-pointer inline-flex items-center space-x-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+                    <Sparkles className="w-4 h-4" />
+                    <span>上传介绍区照片</span>
+                    <input type="file" accept="image/*" onChange={handleHeroBgImageUpload} className="hidden" />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = localStorage.getItem('wf_hero_full_mode') === 'true';
+                      localStorage.setItem('wf_hero_full_mode', current ? 'false' : 'true');
+                      window.dispatchEvent(new Event('storage'));
+                      setPassSaved(true);
+                      setTimeout(() => setPassSaved(false), 1500);
+                    }}
+                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition-all text-left"
+                  >
+                    <span>{localStorage.getItem('wf_hero_full_mode') === 'true' ? '🖼️ 全图无裁剪展示 (已开启)' : '🖼️ 切换为全图无裁剪展示'}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2144,6 +2174,14 @@ export const SettingsPage: React.FC = () => {
 
                       <div className="flex items-center space-x-1.5">
                         <button
+                          onClick={() => handleDownloadNoteTxt(note)}
+                          className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center space-x-0.5"
+                          title="导出下载为 TXT 文本文件"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-bold">TXT</span>
+                        </button>
+                        <button
                           onClick={() => handleEditNote(note)}
                           className="p-1 text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors"
                           title="编辑笔记"
@@ -2195,16 +2233,32 @@ export const SettingsPage: React.FC = () => {
             </p>
 
             {/* Message Input Box */}
-            <form onSubmit={handleSendCommunityMessage} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <form id="community-message-form" onSubmit={handleSendCommunityMessage} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
               <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300">
                 <User className="w-4 h-4 text-sky-500" />
                 <span>当前发言身份: <span className="text-sky-500">{currentUser || '匿名访客'}</span></span>
               </div>
 
+              {replyTarget && (
+                <div className="flex items-center justify-between p-2.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-500/30 rounded-xl text-xs">
+                  <span className="text-slate-700 dark:text-slate-300 font-medium truncate pr-2">
+                    正在回复 <b className="text-sky-500">@{replyTarget.username}</b>: “{replyTarget.content}”
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReplyTarget(null)}
+                    className="p-1 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="取消回复"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               <textarea
                 value={msgInputText}
                 onChange={(e) => setMsgInputText(e.target.value)}
-                placeholder="请输入您的留言内容或分享想法..."
+                placeholder={replyTarget ? `回复 @${replyTarget.username}...` : "请输入您的留言内容或分享想法..."}
                 rows={3}
                 className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none font-medium"
               />
@@ -2269,6 +2323,15 @@ export const SettingsPage: React.FC = () => {
                         <Clock className="w-3 h-3 text-slate-400" />
                         <span>{msg.createdAt}</span>
 
+                        <button
+                          onClick={() => {
+                            setReplyTarget({ id: msg.id, username: msg.username, content: msg.content });
+                          }}
+                          className="px-2 py-0.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-lg font-bold flex items-center space-x-1 transition-colors"
+                        >
+                          <span>回复</span>
+                        </button>
+
                         {isAdmin && (
                           <button
                             onClick={() => deleteMessage(msg.id)}
@@ -2280,6 +2343,13 @@ export const SettingsPage: React.FC = () => {
                         )}
                       </div>
                     </div>
+
+                    {/* Reply Quote Banner */}
+                    {msg.replyToUser && (
+                      <div className="p-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl text-[11px] text-slate-600 dark:text-slate-300 border-l-2 border-sky-500 font-medium">
+                        <span className="font-bold text-sky-500">@{msg.replyToUser}:</span> {msg.replyToContent || '回复原留言'}
+                      </div>
+                    )}
 
                     {/* Message Content Text */}
                     {msg.content && (

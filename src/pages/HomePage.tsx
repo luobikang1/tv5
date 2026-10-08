@@ -272,11 +272,18 @@ export const HomePage: React.FC = () => {
     loadData();
   }, [activeApiIndex, showAdultColumn, apiList]);
 
+  const [heroFullMode, setHeroFullMode] = useState<boolean>(() => {
+    return localStorage.getItem('wf_hero_full_mode') === 'true';
+  });
+
   const heroStyle: React.CSSProperties = customHeroBgImage
     ? {
-        backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.4)), url(${customHeroBgImage})`,
-        backgroundSize: 'cover',
+        backgroundImage: heroFullMode
+          ? `url(${customHeroBgImage})`
+          : `linear-gradient(to right, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.4)), url(${customHeroBgImage})`,
+        backgroundSize: heroFullMode ? 'contain' : 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
       }
     : {};
 
