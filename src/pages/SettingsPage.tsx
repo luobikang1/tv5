@@ -500,6 +500,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteCloudFile = async (id: string) => {
+    const targetFile = cloudFiles.find((f) => f.id === id);
+    const fileName = targetFile ? targetFile.name : '此文件';
+    if (!window.confirm(`确定要删除“${fileName}”吗？删除后不可恢复。`)) {
+      return;
+    }
     const updated = cloudFiles.filter((f) => f.id !== id);
     setCloudFiles(updated);
     setSelectedFileIds((prev) => prev.filter((item) => item !== id));
@@ -1754,6 +1759,14 @@ export const SettingsPage: React.FC = () => {
 
               {selectedFileIds.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setSelectedFileIds([])}
+                    className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-xl font-bold flex items-center space-x-1 transition-colors shadow-sm"
+                  >
+                    <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                    <span>一键取消选择</span>
+                  </button>
+
                   <button
                     onClick={handleBatchDownload}
                     className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-bold flex items-center space-x-1 shadow transition-colors"
