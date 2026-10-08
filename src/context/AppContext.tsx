@@ -37,8 +37,13 @@ export interface UserDeviceItem {
 
 export type VideoQuality = '360' | '480' | '720' | '1080' | 'auto';
 export type AppLanguage = 'zh' | 'en';
+export type DeviceViewMode = 'auto' | 'mobile' | 'desktop';
 
 interface AppContextType {
+  // Device View Mode (Mobile / PC Switcher)
+  deviceViewMode: DeviceViewMode;
+  setDeviceViewMode: (mode: DeviceViewMode) => void;
+  toggleDeviceViewMode: () => void;
   // Language Switcher
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
@@ -210,6 +215,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Adult Section State
+  // Device View Mode State ('auto' | 'mobile' | 'desktop')
+  const [deviceViewMode, setDeviceViewModeState] = useState<DeviceViewMode>(() => {
+    return (localStorage.getItem('wf_device_view_mode') as DeviceViewMode) || 'auto';
+  });
+
+  const setDeviceViewMode = (mode: DeviceViewMode) => {
+    setDeviceViewModeState(mode);
+    localStorage.setItem('wf_device_view_mode', mode);
+  };
+
+  const toggleDeviceViewMode = () => {
+    setDeviceViewModeState((prev) => {
+      const next = prev === 'auto' ? 'mobile' : prev === 'mobile' ? 'desktop' : 'auto';
+      localStorage.setItem('wf_device_view_mode', next);
+      return next;
+    });
+  };
+
   const [showAdultColumn, setShowAdultColumnState] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.ADULT) === 'true';
   });
@@ -652,6 +675,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        deviceViewMode,
+        setDeviceViewMode,
+        toggleDeviceViewMode,
         isUnlocked,
         verifyPassword,
         setPassword,

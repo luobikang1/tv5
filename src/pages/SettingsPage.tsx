@@ -26,6 +26,8 @@ import {
   Sparkles,
   Globe,
   Smartphone,
+  Moon,
+  Sun,
   Users,
   XCircle,
   Clock,
@@ -81,6 +83,10 @@ export const SettingsPage: React.FC = () => {
     customHeroBgImage,
     setCustomHeroBgImage,
     clearCustomBg,
+    isDarkMode,
+    toggleDarkMode,
+    deviceViewMode,
+    setDeviceViewMode,
     defaultResolution,
     setDefaultResolution,
     apiList,
@@ -717,6 +723,74 @@ export const SettingsPage: React.FC = () => {
                 重置所有背景为系统默认
               </button>
             )}
+
+            {/* Quick Dark Mode & Mobile/PC View Mode Buttons */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              {/* Dark Mode Quick Toggle */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    {isDarkMode ? <Moon className="w-4 h-4 text-amber-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                    <span>夜间 / 日间主题模式一键切换</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">快速切换全站深色夜间模式或浅色日间视觉主题</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleDarkMode}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 shadow-sm flex items-center space-x-1.5"
+                >
+                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+                  <span>{isDarkMode ? '切换为日间模式 ☀️' : '切换为夜间模式 🌙'}</span>
+                </button>
+              </div>
+
+              {/* Mobile / PC View Mode Switcher */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    <Smartphone className="w-4 h-4 text-fox-500" />
+                    <span>手机 / 电脑 界面模式一键切换</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">一键切换手机端紧凑视觉布局或电脑端宽屏大视图</p>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('auto')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'auto'
+                        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border-transparent'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    🌐 自动
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('mobile')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'mobile'
+                        ? 'bg-fox-500 text-white border-fox-500 shadow-fox-500/20'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    📱 手机端模式
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeviceViewMode('desktop')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
+                      deviceViewMode === 'desktop'
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sky-500/20'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    💻 电脑端模式
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </section>
@@ -1310,9 +1384,14 @@ export const SettingsPage: React.FC = () => {
                   style={{ width: `${Math.min((usedGB / 10) * 100, 100)}%` }}
                 />
               </div>
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1.5">
-                <Database className="w-4 h-4 flex-shrink-0" />
-                <span>💡 说明：开启 Cloudflare D1 数据库后，R2 云盘存储的所有文件与分类目录将自动实现多设备云端无缝同步。</span>
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-bold space-y-1">
+                <div className="flex items-center space-x-1.5">
+                  <Database className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                  <span>D1 数据库跨设备文件列表与缩略图信息同步说明：</span>
+                </div>
+                <p className="text-[11px] font-normal text-slate-600 dark:text-slate-300 leading-relaxed">
+                  接入 Cloudflare D1 数据库后，在任一设备上传、分类、重命名或删除的 R2 云盘文件列表（包含图片视频缩略图预览）将自动云端同步，方便在手机与电脑等不同设备间无缝管理。
+                </p>
               </div>
             </div>
 
@@ -1438,8 +1517,8 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               {filteredCloudFiles.length > 0 ? (
-                /* 3-Column Large Card Grid Layout (并排三个大图样式) */
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                /* 3-Column Card Grid Layout optimized for all screen sizes including mobile (grid-cols-3) */
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
                   {filteredCloudFiles.map((file) => {
                     const isSelected = selectedFileIds.includes(file.id);
                     return (
@@ -1451,27 +1530,27 @@ export const SettingsPage: React.FC = () => {
                             : 'border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        {/* Card Large Media Preview Header Area (h-40) */}
-                        <div className="relative w-full h-40 bg-slate-900 overflow-hidden flex items-center justify-center">
+                        {/* Card Media Preview Header Area (h-24 sm:h-36) */}
+                        <div className="relative w-full h-24 sm:h-36 bg-slate-900 overflow-hidden flex items-center justify-center">
                           {/* Checkbox overlay in top left */}
                           <button
                             onClick={() => handleToggleSelectFile(file.id)}
-                            className="absolute top-2.5 left-2.5 z-20 p-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors"
+                            className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 z-20 p-1 rounded-lg sm:rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md transition-colors"
                             title={isSelected ? '取消选择' : '勾选选择'}
                           >
                             {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-sky-400" />
+                              <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
                             ) : (
-                              <Square className="w-4 h-4 text-slate-300" />
+                              <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-300" />
                             )}
                           </button>
 
                           {/* Category Badge overlay in top right */}
-                          <div className="absolute top-2.5 right-2.5 z-20">
+                          <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-20">
                             <select
                               value={file.category}
                               onChange={(e) => handleSingleMoveCategory(file.id, e.target.value)}
-                              className="px-2 py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[10px] rounded-xl focus:outline-none cursor-pointer"
+                              className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/60 backdrop-blur-md text-sky-300 border border-sky-400/30 font-extrabold text-[9px] sm:text-[10px] rounded-lg sm:rounded-xl focus:outline-none cursor-pointer"
                             >
                               <option value="视频">🎬 视频</option>
                               <option value="音乐">🎵 音乐</option>
@@ -1485,23 +1564,23 @@ export const SettingsPage: React.FC = () => {
                           {file.category === '图片' || file.fileType.startsWith('image/') || file.url.startsWith('data:image/') ? (
                             <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                           ) : file.category === '视频' || file.fileType.startsWith('video/') || file.url.startsWith('data:video/') ? (
-                            <div className="relative w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
-                              <Video className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-mono rounded-md">
-                                MP4 媒体视频
+                            <div className="relative w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950 p-1 text-center">
+                              <Video className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
+                                MP4 视频
                               </span>
                             </div>
                           ) : file.category === '音乐' ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 bg-gradient-to-br from-amber-950/40 to-slate-950">
-                              <Music className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono rounded-md">
+                            <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 bg-gradient-to-br from-amber-950/40 to-slate-950 p-1 text-center">
+                              <Music className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
                                 音频原声
                               </span>
                             </div>
                           ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950">
-                              <FileText className="w-10 h-10 group-hover:scale-110 transition-transform" />
-                              <span className="mt-1 px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-mono rounded-md">
+                            <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 bg-gradient-to-br from-slate-900 to-slate-950 p-1 text-center">
+                              <FileText className="w-7 h-7 sm:w-10 sm:h-10 group-hover:scale-110 transition-transform" />
+                              <span className="mt-1 px-1.5 py-0.5 bg-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-mono rounded-md truncate max-w-full">
                                 云盘文件
                               </span>
                             </div>
@@ -1509,44 +1588,44 @@ export const SettingsPage: React.FC = () => {
                         </div>
 
                         {/* Card Details Body */}
-                        <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
-                          <div className="space-y-1">
-                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-xs" title={file.name}>
+                        <div className="p-2 sm:p-3.5 space-y-1.5 flex-1 flex flex-col justify-between">
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-slate-900 dark:text-slate-100 truncate text-[11px] sm:text-xs" title={file.name}>
                               {file.name}
                             </p>
-                            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                              <span>大小: {(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
-                              <span className="truncate max-w-[110px]" title={file.uploadDate}>{file.uploadDate}</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[9px] sm:text-[10px] text-slate-400 font-mono gap-0.5">
+                              <span>{(file.sizeBytes / (1024 * 1024)).toFixed(2)} MB</span>
+                              <span className="truncate max-w-[90px]" title={file.uploadDate}>{file.uploadDate.split(' ')[0] || file.uploadDate}</span>
                             </div>
                           </div>
 
                           {/* Action Toolbar Grid (Download, Preview, Share, Rename, Delete) */}
-                          <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-1 text-[11px]">
+                          <div className="pt-1.5 border-t border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-0.5 sm:gap-1 text-[9px] sm:text-[11px]">
                             <button
                               onClick={() => setPreviewFile(file)}
-                              className="p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-slate-200/60 dark:bg-slate-700/60 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="在线预览"
                             >
-                              <Eye className="w-3.5 h-3.5 mb-0.5" />
-                              <span>预览</span>
+                              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">预览</span>
                             </button>
 
                             <button
                               onClick={() => handleDownloadFileWithProgress(file)}
-                              className="p-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="极速下载"
                             >
-                              <Download className="w-3.5 h-3.5 mb-0.5" />
-                              <span>{downloadProgressMap[file.id] !== undefined ? `${downloadProgressMap[file.id]}%` : '下载'}</span>
+                              <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">{downloadProgressMap[file.id] !== undefined ? `${downloadProgressMap[file.id]}%` : '下载'}</span>
                             </button>
 
                             <button
                               onClick={() => handleCopyShareLink(file)}
-                              className="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="分享外链"
                             >
-                              {copiedShareId === file.id ? <CheckCircle2 className="w-3.5 h-3.5 mb-0.5" /> : <Share2 className="w-3.5 h-3.5 mb-0.5" />}
-                              <span>{copiedShareId === file.id ? '已复制' : '分享'}</span>
+                              {copiedShareId === file.id ? <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                              <span className="hidden sm:inline mt-0.5">{copiedShareId === file.id ? '已复制' : '分享'}</span>
                             </button>
 
                             <button
@@ -1554,20 +1633,20 @@ export const SettingsPage: React.FC = () => {
                                 setRenameModalFile(file);
                                 setRenameInput(file.name);
                               }}
-                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="重命名"
                             >
-                              <Edit3 className="w-3.5 h-3.5 mb-0.5" />
-                              <span>改名</span>
+                              <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">改名</span>
                             </button>
 
                             <button
                               onClick={() => handleDeleteCloudFile(file.id)}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
+                              className="p-1 sm:p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg sm:rounded-xl font-bold flex flex-col items-center justify-center transition-colors"
                               title="删除文件"
                             >
-                              <Trash2 className="w-3.5 h-3.5 mb-0.5" />
-                              <span>删除</span>
+                              <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                              <span className="hidden sm:inline mt-0.5">删除</span>
                             </button>
                           </div>
                         </div>
