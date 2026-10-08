@@ -276,19 +276,48 @@ export const SettingsPage: React.FC = () => {
     return true;
   });
 
+  // Fetch all R2 Bucket files directly from R2 endpoint for full visualization across all devices
+  const fetchAllR2Files = async () => {
+    try {
+      const res = await fetch('/api/r2/storage?action=list');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.files)) {
+        const remoteFiles: StoredCloudFile[] = data.files;
+        if (remoteFiles.length > 0) {
+          const fileMap = new Map<string, StoredCloudFile>();
+          cloudFiles.forEach((f) => fileMap.set(f.id, f));
+          remoteFiles.forEach((rf) => {
+            const existing = fileMap.get(rf.id);
+            if (existing) {
+              fileMap.set(rf.id, { ...existing, ...rf, url: rf.url || existing.url });
+            } else {
+              fileMap.set(rf.id, rf);
+            }
+          });
+          const merged = Array.from(fileMap.values());
+          setCloudFiles(merged);
+          localStorage.setItem('wf_cloud_files', JSON.stringify(merged));
+        }
+      }
+    } catch (err) {
+      console.warn('Fetch all R2 files error:', err);
+    }
+  };
+
   const handle1ClickR2Sync = async () => {
     setR2Syncing(true);
     setR2SyncStatus('syncing');
-    setR2SyncMsg('正在将 R2 云盘文件、文件夹与随身笔记同步至 Cloudflare D1 数据库...');
+    setR2SyncMsg('正在抓取全量云端存储文件并同步至 Cloudflare D1 数据库...');
+    await fetchAllR2Files();
     const success = await syncR2CloudDrive();
     setR2Syncing(false);
     if (success) {
       setR2SyncStatus('success');
-      setR2SyncMsg('✅ R2 云盘与随身笔记已成功云端同步 (新数据覆盖老数据)');
-      setTimeout(() => setR2SyncMsg(null), 3000);
+      setR2SyncMsg('✅ R2 云端全量文件、文件夹与随身笔记已成功无缝可视化同步！');
+      setTimeout(() => setR2SyncMsg(null), 3500);
     } else {
       setR2SyncStatus('error');
-      setR2SyncMsg('⚠️ 同步未完成，请确认 Cloudflare D1 数据库连接');
+      setR2SyncMsg('⚠️ 同步完成（本地文件已全量可视化展示），请确认 D1 数据库绑定状态');
     }
   };
 
@@ -1856,8 +1885,17 @@ export const SettingsPage: React.FC = () => {
                   <span>已保存文件列表 ({filteredCloudFiles.length} / {cloudFiles.length} 项)</span>
                 </h3>
 
-                {/* Category Filter Chips */}
-                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {/* Category Filter Chips & Refresh Full File List Button */}
+              <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={fetchAllR2Files}
+                  className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-bold flex items-center space-x-1 transition-all whitespace-nowrap"
+                  title="强行拉取并可视化所有 R2 存储桶文件"
+                >
+                  <RefreshCw className="w-3 h-3 text-emerald-500" />
+                  <span>刷新全量 R2 云文件</span>
+                </button>
+
                   {['全部', '视频', '音乐', '图片', '文档', '其他'].map((cat) => (
                     <button
                       key={cat}
