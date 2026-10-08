@@ -51,6 +51,11 @@ import {
   Image as ImageFileIcon,
   Trash,
   ImageOff,
+  FolderPlus,
+  Folder,
+  BookOpen,
+  Save,
+  Search,
 } from 'lucide-react';
 
 interface StoredCloudFile {
@@ -58,6 +63,7 @@ interface StoredCloudFile {
   name: string;
   sizeBytes: number;
   category: string;
+  folderId?: string;
   uploadDate: string;
   url: string;
   fileType: string;
@@ -117,7 +123,32 @@ export const SettingsPage: React.FC = () => {
     addMessage,
     deleteMessage,
     deleteMessageImage,
+    notesList,
+    addNote,
+    updateNote,
+    deleteNote,
+    clearNotes,
+    cloudFolders,
+    addFolder,
+    deleteFolder,
+    syncR2CloudDrive,
   } = useApp();
+
+  // Notebook State
+  const [noteTitleInput, setNoteTitleInput] = useState('');
+  const [noteContentInput, setNoteContentInput] = useState('');
+  const [noteCategoryInput, setNoteCategoryInput] = useState('默认');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteSearchQuery, setNoteSearchQuery] = useState('');
+
+  // R2 Sync State & Light Indicator
+  const [r2Syncing, setR2Syncing] = useState(false);
+  const [r2SyncStatus, setR2SyncStatus] = useState<'success' | 'syncing' | 'idle' | 'error'>('idle');
+  const [r2SyncMsg, setR2SyncMsg] = useState<string | null>(null);
+
+  // New Folder Creation State
+  const [newFolderNameInput, setNewFolderNameInput] = useState('');
+  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>('all');
 
   // Message Board State
   const [msgInputText, setMsgInputText] = useState('');
@@ -236,9 +267,64 @@ export const SettingsPage: React.FC = () => {
   const [batchMoveTargetCategory, setBatchMoveTargetCategory] = useState<string>('视频');
 
   const filteredCloudFiles = cloudFiles.filter((f) => {
-    if (selectedListCategory === '全部') return true;
-    return f.category === selectedListCategory;
+    if (selectedListCategory !== '全部' && f.category !== selectedListCategory) {
+      return false;
+    }
+    if (selectedFolderFilter !== 'all' && f.folderId !== selectedFolderFilter) {
+      return false;
+    }
+    return true;
   });
+
+  const handle1ClickR2Sync = async () => {
+    setR2Syncing(true);
+    setR2SyncStatus('syncing');
+    setR2SyncMsg('正在将 R2 云盘文件、文件夹与随身笔记同步至 Cloudflare D1 数据库...');
+    const success = await syncR2CloudDrive();
+    setR2Syncing(false);
+    if (success) {
+      setR2SyncStatus('success');
+      setR2SyncMsg('✅ R2 云盘与随身笔记已成功云端同步 (新数据覆盖老数据)');
+      setTimeout(() => setR2SyncMsg(null), 3000);
+    } else {
+      setR2SyncStatus('error');
+      setR2SyncMsg('⚠️ 同步未完成，请确认 Cloudflare D1 数据库连接');
+    }
+  };
+
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFolderNameInput.trim()) return;
+    addFolder(newFolderNameInput.trim());
+    setNewFolderNameInput('');
+  };
+
+  const handleSaveNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteTitleInput.trim() && !noteContentInput.trim()) return;
+    if (editingNoteId) {
+      updateNote(editingNoteId, noteTitleInput, noteContentInput, noteCategoryInput);
+      setEditingNoteId(null);
+    } else {
+      addNote(noteTitleInput, noteContentInput, noteCategoryInput);
+    }
+    setNoteTitleInput('');
+    setNoteContentInput('');
+  };
+
+  const handleEditNote = (note: any) => {
+    setEditingNoteId(note.id);
+    setNoteTitleInput(note.title);
+    setNoteContentInput(note.content);
+    setNoteCategoryInput(note.category || '默认');
+  };
+
+  const filteredNotes = notesList.filter((n) =>
+    noteSearchQuery
+      ? n.title.toLowerCase().includes(noteSearchQuery.toLowerCase()) ||
+        n.content.toLowerCase().includes(noteSearchQuery.toLowerCase())
+      : true
+  );
 
   const getBeijingTimeString = () => {
     return (
@@ -1508,13 +1594,53 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
             <UploadCloud className="w-6 h-6 text-sky-500" />
             <h2>R2云盘</h2>
+
+            {/* Sync Light Status Indicator Badge */}
+            <div
+              className={`px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm ml-2 ${
+                r2SyncStatus === 'success'
+                  ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                  : r2SyncStatus === 'syncing'
+                  ? 'bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400'
+                  : r2SyncStatus === 'error'
+                  ? 'bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400'
+                  : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  r2SyncStatus === 'success'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : r2SyncStatus === 'syncing'
+                    ? 'bg-amber-500 animate-ping'
+                    : r2SyncStatus === 'error'
+                    ? 'bg-red-500'
+                    : 'bg-emerald-500'
+                }`}
+              />
+              <span>
+                {r2SyncStatus === 'success'
+                  ? '🟢 已一键云端同步'
+                  : r2SyncStatus === 'syncing'
+                  ? '🟡 正在同步云盘中...'
+                  : r2SyncStatus === 'error'
+                  ? '🔴 同步失败'
+                  : '🟢 同步在线灯'}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="hidden sm:flex items-center space-x-2 text-xs font-mono font-bold">
-              <span className="text-slate-500 dark:text-slate-400">免费存储总量: 10.00 GB</span>
-              <span className="text-emerald-500">剩余: {remainingGB.toFixed(2)} GB</span>
-            </div>
+            {/* 1-Click Sync Button */}
+            <button
+              onClick={handle1ClickR2Sync}
+              disabled={r2Syncing}
+              className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-md shadow-sky-500/20 transition-all disabled:opacity-50"
+              title="点击一键同步 R2 云盘数据至 Cloudflare D1 (新数据覆盖老数据)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${r2Syncing ? 'animate-spin' : ''}`} />
+              <span>一键同步 R2 云盘</span>
+            </button>
 
             {/* Collapsible Panel Section Toggle Button */}
             <button
@@ -1529,6 +1655,8 @@ export const SettingsPage: React.FC = () => {
 
         {isExpanded('storage') && (
           <div className="space-y-6 animate-fadeIn">
+            {r2SyncMsg && <p className="text-xs font-bold text-sky-500">{r2SyncMsg}</p>}
+
             {/* Beijing Time Notice & Free Storage Space Progress Meter & D1 Sync Notice */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-semibold gap-1">
@@ -1548,11 +1676,80 @@ export const SettingsPage: React.FC = () => {
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-600 dark:text-emerald-400 font-bold space-y-1">
                 <div className="flex items-center space-x-1.5">
                   <Database className="w-4 h-4 flex-shrink-0 text-emerald-500" />
-                  <span>D1 数据库跨设备文件列表与缩略图信息同步说明：</span>
+                  <span>D1 数据库跨设备文件同步 (新数据覆盖老数据) 说明：</span>
                 </div>
                 <p className="text-[11px] font-normal text-slate-600 dark:text-slate-300 leading-relaxed">
-                  接入 Cloudflare D1 数据库后，在任一设备上传、分类、重命名或删除的 R2 云盘文件列表（包含图片视频缩略图预览）将自动云端同步，方便在手机与电脑等不同设备间无缝管理。
+                  数据同步方式已全面升级为<b>新数据覆盖老数据</b>。在任一设备上新建/删除文件夹、上传或重命名文件后，点击【一键同步 R2 云盘】即可直接无缝更新云端全量数据。
                 </p>
+              </div>
+            </div>
+
+            {/* New Folder Creation Section */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <FolderPlus className="w-4 h-4 text-sky-500" />
+                  <span>新建与删除云盘文件夹 ({cloudFolders.length} 个文件夹)</span>
+                </h3>
+              </div>
+
+              {/* Create Folder Form */}
+              <form onSubmit={handleCreateFolder} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={newFolderNameInput}
+                  onChange={(e) => setNewFolderNameInput(e.target.value)}
+                  placeholder="请输入新文件夹名称 (如: 港剧高清合集)"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold rounded-xl shadow flex items-center space-x-1 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>新建文件夹</span>
+                </button>
+              </form>
+
+              {/* Folders List Pills */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  onClick={() => setSelectedFolderFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 border ${
+                    selectedFolderFilter === 'all'
+                      ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Folder className="w-3.5 h-3.5" />
+                  <span>全部文件夹</span>
+                </button>
+
+                {cloudFolders.map((folder) => (
+                  <div
+                    key={folder.id}
+                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                      selectedFolderFilter === folder.id
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-sm'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <button
+                      onClick={() => setSelectedFolderFilter(folder.id)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Folder className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{folder.name}</span>
+                    </button>
+                    <button
+                      onClick={() => deleteFolder(folder.id)}
+                      className="p-0.5 text-slate-400 hover:text-red-500 transition-colors ml-1"
+                      title="删除此文件夹"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1834,6 +2031,171 @@ export const SettingsPage: React.FC = () => {
         )}
       </section>
       )}
+
+      {/* Notebook / Notepad Section (随身云笔记本) */}
+      <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+            <BookOpen className="w-6 h-6 text-sky-500" />
+            <h2>随身云笔记本 ({notesList.length} 条笔记)</h2>
+          </div>
+
+          <button
+            onClick={() => toggleSection('notebook')}
+            className="px-3.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 shadow-sm"
+          >
+            {isExpanded('notebook') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>{isExpanded('notebook') ? '收起笔记本 ▲' : '展开笔记本 ▼'}</span>
+          </button>
+        </div>
+
+        {isExpanded('notebook') && (
+          <div className="space-y-6 animate-fadeIn">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              记录观影清单、影视网址备忘或个人云端笔记。支持与 Cloudflare D1 数据库云端同步（新数据覆盖老数据）。
+            </p>
+
+            {/* Note Input / Edit Form */}
+            <form onSubmit={handleSaveNote} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <input
+                  type="text"
+                  value={noteTitleInput}
+                  onChange={(e) => setNoteTitleInput(e.target.value)}
+                  placeholder="笔记标题 (如: 追剧备忘清单 / 极速源站网址)"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+
+                <select
+                  value={noteCategoryInput}
+                  onChange={(e) => setNoteCategoryInput(e.target.value)}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                >
+                  <option value="默认">📝 默认分类</option>
+                  <option value="观影笔记">🎬 观影笔记</option>
+                  <option value="网址清单">🌐 网址清单</option>
+                  <option value="灵感备忘">💡 灵感备忘</option>
+                </select>
+              </div>
+
+              <textarea
+                value={noteContentInput}
+                onChange={(e) => setNoteContentInput(e.target.value)}
+                placeholder="请输入笔记详细内容..."
+                rows={4}
+                className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none font-medium"
+              />
+
+              <div className="flex items-center justify-between pt-1">
+                {editingNoteId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteTitleInput('');
+                      setNoteContentInput('');
+                    }}
+                    className="px-3.5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    取消编辑
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-slate-400">💡 提示：点击笔记可随时编辑或删除</span>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!noteTitleInput.trim() && !noteContentInput.trim()}
+                  className="px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs shadow-md shadow-sky-500/20 flex items-center space-x-1.5 transition-all disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{editingNoteId ? '更新并保存笔记' : '保存新笔记'}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* Note Search & Filters Bar */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <input
+                  type="text"
+                  value={noteSearchQuery}
+                  onChange={(e) => setNoteSearchQuery(e.target.value)}
+                  placeholder="搜索随身笔记..."
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              </div>
+
+              {notesList.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('确定要清空所有笔记吗？')) {
+                      clearNotes();
+                    }
+                  }}
+                  className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>清空笔记本</span>
+                </button>
+              )}
+            </div>
+
+            {/* Notes List Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredNotes.length > 0 ? (
+                filteredNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between transition-all hover:shadow-md group"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 truncate pr-2">
+                          {note.title}
+                        </span>
+                        <span className="px-2 py-0.5 bg-sky-500/10 text-sky-500 text-[10px] font-bold rounded-lg flex-shrink-0">
+                          {note.category || '默认'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-4 whitespace-pre-wrap font-medium">
+                        {note.content}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-[10px] text-slate-400 font-mono">
+                      <span>{note.updatedAt}</span>
+
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => handleEditNote(note)}
+                          className="p-1 text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors"
+                          title="编辑笔记"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteNote(note.id)}
+                          className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="删除笔记"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="col-span-full text-center py-8 text-slate-400 text-xs font-medium bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                  暂无匹配的随身笔记，在上方新建您的第一条笔记吧！
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Community Message Board Area (留言区 - 全员互动与图片发布) */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
