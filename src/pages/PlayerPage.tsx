@@ -34,6 +34,21 @@ export const PlayerPage: React.FC = () => {
         const parsedSources = parsePlayUrls(data.vod_play_from, data.vod_play_url);
         setPlaySources(parsedSources);
 
+          // Prioritize FFM3U8 (非凡极速) as primary line option
+          let primarySourceIndex = 0;
+          if (parsedSources.length > 1) {
+            const ffIdx = parsedSources.findIndex(
+              (s) =>
+                s.sourceName.toUpperCase().includes('FFM3U8') ||
+                s.sourceName.includes('非凡') ||
+                s.sourceName.toUpperCase().includes('FF')
+            );
+            if (ffIdx !== -1) {
+              primarySourceIndex = ffIdx;
+            }
+          }
+          setActiveSourceIndex(primarySourceIndex);
+
         // Find existing history record for exact playhead time and episode index
         const existingHistory = historyList.find((h) => String(h.id) === vidKey);
         let targetEpIndex = 0;
@@ -48,11 +63,12 @@ export const PlayerPage: React.FC = () => {
           }
         }
 
-        if (parsedSources.length > 0 && parsedSources[0].episodes.length > targetEpIndex) {
+          const activeSrc = parsedSources[primarySourceIndex];
+          if (activeSrc && activeSrc.episodes.length > targetEpIndex) {
           setActiveEpisodeIndex(targetEpIndex);
           setInitialSeekTime(targetSeek);
 
-          const curEp = parsedSources[0].episodes[targetEpIndex];
+            const curEp = activeSrc.episodes[targetEpIndex];
           addHistory({
             id: vidKey,
             vod_name: data.vod_name,

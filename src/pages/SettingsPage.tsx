@@ -785,78 +785,95 @@ export const SettingsPage: React.FC = () => {
 
       {/* CDN Node Access Status & Cache Monitor Section */}
       <section className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-md space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
-              <Globe className="w-5 h-5 text-sky-500" />
-              <h2>CDN 接入状态查看区 (缓存数值与设定)</h2>
-            </div>
-            {/* CDN Access Status Indicator Light */}
-            <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>🟢 后台 CDN 边缘节点已接入生效</span>
-            </div>
-          </div>
+        {(() => {
+          // Dynamic real-time verification of CDN proxy node status
+          const [cdnHealth, setCdnHealth] = React.useState<'checking' | 'active' | 'inactive'>('checking');
 
-          <button
-            onClick={() => toggleSection('cdn')}
-            className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-          >
-            {isExpanded('cdn') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            <span>{isExpanded('cdn') ? '收起界面 ▲' : '展开界面 ▼'}</span>
-          </button>
-        </div>
+          React.useEffect(() => {
+            let active = true;
+            const checkCdn = async () => {
+              try {
+                const res = await fetch('/api/proxy?url=https%3A%2F%2Fhttpbin.org%2Fget', { method: 'GET' });
+                if (res.ok && active) {
+                  setCdnHealth('active');
+                  return;
+                }
+              } catch {
+                // Fallback check
+              }
+              // If proxy ping fails or offline
+              if (active) setCdnHealth('inactive');
+            };
+            checkCdn();
+            return () => { active = false; };
+          }, []);
 
-        {isExpanded('cdn') && (
-          <div className="space-y-4 animate-fadeIn">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              实时监控全站 CDN 边缘节点分层缓存规则与流媒体加速设定，确保弱网与高并发下的播放稳定性。
-            </p>
+          return (
+            <>
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-lg">
+                    <Globe className="w-5 h-5 text-sky-500" />
+                    <h2>CDN 接入状态查看区 (缓存数值与设定)</h2>
+                  </div>
+                  {/* Dynamic CDN Status Indicator Light */}
+                  {cdnHealth === 'active' ? (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>🟢 后台 CDN 边缘节点已接入生效</span>
+                    </div>
+                  ) : cdnHealth === 'checking' ? (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+                      <span>🟡 正在检测 CDN 边缘节点...</span>
+                    </div>
+                  ) : (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                      <span>🔴 CDN 边缘代理未连接 (直连模式)</span>
+                    </div>
+                  )}
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">🎬 视频分片缓存 (Segments)</p>
-                <p className="text-sm font-mono font-extrabold text-sky-500">7 ~ 30 天 (30 Days Cache)</p>
-                <p className="text-[11px] text-slate-400">`.ts / .m4s / .mp4` 边缘持久化存储</p>
+                <button
+                  onClick={() => toggleSection('cdn')}
+                  className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+                >
+                  {isExpanded('cdn') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  <span>{isExpanded('cdn') ? '收起界面 ▲' : '展开界面 ▼'}</span>
+                </button>
               </div>
 
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">📋 索引与清单缓存 (Manifest)</p>
-                <p className="text-sm font-mono font-extrabold text-emerald-500">1 ~ 10 分钟 (5 Mins Refresh)</p>
-                <p className="text-[11px] text-slate-400">`.m3u8` 动态索引分层更新</p>
-              </div>
+              {isExpanded('cdn') && (
+                <div className="space-y-4 animate-fadeIn">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    实时监控全站 CDN 边缘节点分层缓存规则与流媒体加速设定，确保弱网与高并发下的播放稳定性。
+                  </p>
 
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">⚡ 弱网预缓冲设定 (Buffer)</p>
-                <p className="text-sm font-mono font-extrabold text-fox-500">30 ~ 45 秒 (默认35s / 开启180s)</p>
-                <p className="text-[11px] text-slate-400">自适应防卡顿缓冲池</p>
-              </div>
-            </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">🎬 视频分片缓存 (Segments)</p>
+                      <p className="text-sm font-mono font-extrabold text-sky-500">7 ~ 30 天 (30 Days Cache)</p>
+                      <p className="text-[11px] text-slate-400">`.ts / .m4s / .mp4` 边缘持久化存储</p>
+                    </div>
 
-            {/* Bilingual Switcher nested inside CDN view */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700 dark:text-slate-300">界面多语言 (Language Selector):</span>
-              <div className="flex items-center space-x-2">
-                {[
-                  { code: 'zh', name: '简体中文' },
-                  { code: 'en', name: 'English' },
-                ].map((item) => (
-                  <button
-                    key={item.code}
-                    onClick={() => setLanguage(item.code as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                      language === item.code
-                        ? 'bg-fox-500 text-white border-fox-500 shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">📋 索引与清单缓存 (Manifest)</p>
+                      <p className="text-sm font-mono font-extrabold text-emerald-500">1 ~ 10 分钟 (5 Mins Refresh)</p>
+                      <p className="text-[11px] text-slate-400">`.m3u8` 动态索引分层更新</p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">⚡ 弱网预缓冲设定 (Buffer)</p>
+                      <p className="text-sm font-mono font-extrabold text-fox-500">30 ~ 45 秒 (默认35s / 开启180s)</p>
+                      <p className="text-[11px] text-slate-400">自适应防卡顿缓冲池</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {/* Homepage & Hero Banner Background Customization */}

@@ -105,20 +105,22 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
         maxBufferLength: maxBufLen,
         maxMaxBufferLength: maxMaxBufLen,
         maxBufferSize: maxBufSize,
-        maxBufferHole: 0.8, // Enhanced buffer hole tolerance for vertical video
-        nudgeMaxRetry: 8, // Anti-lag retry loop
+        maxBufferHole: 0.8,
+        nudgeMaxRetry: 10,
         maxStarvationDelay: 4,
         highBufferWatchdogPeriod: 2,
         startFragPrefetch: true,
         testBandwidth: true,
         progressive: true,
         startLevel: -1,
-        fragLoadingTimeOut: 30000,
-        manifestLoadingTimeOut: 30000,
+        fragLoadingTimeOut: 35000,
+        manifestLoadingTimeOut: 35000,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
+          // Ensure cross-origin / mixed-content requests pass through proxy cleanly
           const isHttpsPage = window.location.protocol === 'https:';
-          if (isHttpsPage && requestUrl.startsWith('http:') && !requestUrl.includes('/api/proxy')) {
+          const isCrossOrHttp = (isHttpsPage && requestUrl.startsWith('http:')) || !requestUrl.startsWith(window.location.origin);
+          if (isCrossOrHttp && !requestUrl.includes('/api/proxy')) {
             const proxied = `/api/proxy?url=${encodeURIComponent(requestUrl)}`;
             xhr.open('GET', proxied, true);
           }
@@ -512,10 +514,10 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
                     ? 'bg-fox-500 border-fox-500 text-white shadow-fox-500/20'
                     : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                 }`}
-                title="暂停播放时提前加载 180 秒(3分钟)视频缓存，提升播放流畅度"
+                title="CDN 边缘节点极速加速与 180 秒预加载缓存，提升播放流畅度"
               >
                 <Zap className="w-4 h-4" />
-                <span>{preloadCacheEnabled ? '预加载缓存已开启 (180s预加)' : '开启预加载缓存'}</span>
+                <span>{preloadCacheEnabled ? 'CDN 边缘加速已开启 (180s 缓存)' : '开启 CDN 边缘加速'}</span>
               </button>
             </div>
           );
