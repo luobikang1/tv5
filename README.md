@@ -4,125 +4,132 @@
 ![License](https://img.shields.io/badge/License-MIT-blue.style=for-the-badge)
 ![Cloudflare Pages](https://img.shields.io/badge/Deployment-Cloudflare%20Pages%20%7C%20Vercel%20%7C%20Docker-success?style=for-the-badge)
 
-**白狐5** 是一款基于 Vite + React + TypeScript + Tailwind CSS 构建的极简高画质影视聚合与多端云服务平台。支持 20+ 互联网 CMS 源站接口直连与边缘代理防护、HLS.js 预加载缓存、多码率自适应切换（包含 360P / 720P / 1080P）、Cloudflare R2 对象存储全量可视化管理、Cloudflare D1 数据库实时同步（新数据覆盖老数据）、随身云笔记本 (支持导出 TXT) 以及全员互动留言区 (支持图片与回复引用)。
+**白狐5** 是一款基于 Vite + React + TypeScript + Tailwind CSS 构建的极简高画质影视聚合与多端云服务平台（功能媲美月亮TV）。支持 20+ 互联网 CMS 源站接口直连与边缘代理防护、HLS.js 预加载缓存、多码率自适应切换（低至 360P / 720P / 1080P，默认 360P）、Cloudflare D1 数据库实时同步（新数据覆盖老数据）、成人影片专栏自动配置、随身云笔记本 (支持导出 TXT) 以及全员互动留言区 (支持图片与回复引用)。
 
 ---
 
-## 🌟 核心特色与功能亮点
+## 📦 主要依赖 (Key Dependencies)
 
-### 1. 🎬 极速流媒体播放与多码率切换
-- **HLS.js 边缘切片解析**：支持 M3U8 视频流解析与防卡顿优化（`maxBufferHole` / `nudgeMaxRetry` / `maxStarvationDelay`）。
-- **预加载缓存 switch**：开启后 paused 状态自动预加载 180 秒（3 分钟）视频缓存，流畅不卡顿。
-- **自适应码率切换**：实时解析并显示当前比特率，支持 360P / 720P / 1080P 自适应切换。
-- **画幅与亮度/音量调节**：支持 9:16 竖屏与非标准视频画幅缩放适配，提供手势/滑块调节。
-
-### 2. ☁️ Cloudflare R2 云盘全量可视化管理
-- **文件分类文件夹管理**：内置【🎬 视频】、【🎵 音乐】、【🖼️ 图片】、【📄 文档】与【📦 其他】分类文件夹，支持选择目标文件夹上传与跨文件夹批量/单项移动。
-- **批量文件上传与下载**：支持多文件同时选择并批量上传，实时显示总体百分比进度条。
-- **删除确认保护**：单文件与批量删除增加确认提问，防止误操作。
-- **批量取消选择**：批量管理工具栏内置“一键取消选择”按钮。
-- **全量可视化与 D1 实时同步**：一键同步 R2 云盘，使用**新数据覆盖老数据**策略保证多端数据一致。
-
-### 3. 📝 随身云笔记本与留言区互动
-- **随身云笔记本**：记录观影清单或个人备忘，支持按分类检索，并可以**一键导出下载为 UTF-8 `.txt` 文本文件**。
-- **全员留言交流区**：全员实时留言，支持图文发布、**针对特定留言一键引用回复**，管理员支持独立清理图片以节省云端存储空间。
-
-### 4. 🎨 系统设置与全局自定义
-- **折叠选项与状态持久化**：所有设置模块默认折叠，展开后状态存储于 `localStorage`，刷新页面不收起。
-- **主题调色与全局背景**：提供预设主题调色按键（经典蓝绿、白狐橙红、深邃极夜等），支持上传全站背景图片及**首页介绍区全图无裁剪展示**模式。
-- **中英双语切换**：提供 `zh` (简体中文) 与 `en` (English) 切换。
-- **安全密码与持久会话**：支持设置独立访问密码，一次解锁即可保持 **30 天持久免登录**。
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ 核心依赖库 (Core Dependencies)                                          │
+├───────────────────┬───────────────────┬────────────────────────────────┤
+│ 依赖包            │ 版本号            │ 用途说明                       │
+├───────────────────┼───────────────────┼────────────────────────────────┤
+│ react / react-dom │ ^18.2.0           │ 前端 UI 视图响应式框架         │
+│ react-router-dom  │ ^6.22.3           │ SPA 单页路由路由导航机制       │
+│ hls.js            │ ^1.5.8            │ M3U8 流媒体自适应与切片解析    │
+│ lucide-react      │ ^0.344.0          │ 高清矢量 UI 图标库             │
+│ tailwindcss       │ ^3.4.1            │ 响应式 CSS 样式与夜间模式处理  │
+│ vite              │ ^5.1.4            │ 极速构建与开发服务器           │
+└───────────────────┴───────────────────┴────────────────────────────────┘
+```
 
 ---
 
-## 🚀 部署指南 (支持全平台一键部署)
+## ⚡ 关键环境变量 (Environment Variables)
 
-本项目原生支持多种云平台及自建服务器部署，支持静态与 Serverless 函数代理。
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ 关键环境变量配置框 (Environment Variables Box)                         │
+├─────────────────┬───────────────────┬──────────────────────────────────┤
+│ 变量名称        │ 默认值 / 示例     │ 功能与作用说明                   │
+├─────────────────┼───────────────────┼──────────────────────────────────┤
+│ PASSWORD        │ whitefox5         │ 全站独立访问安全密码 (30天持久)  │
+│ VITE_PASSWORD   │ whitefox5         │ 前端构建期预设全局初始解锁密码   │
+│ CF_D1_BINDING   │ DB                │ Cloudflare Pages D1 数据库绑定名 │
+│ R2_BUCKET       │ R2_BUCKET         │ Cloudflare R2 对象存储绑定名     │
+│ PORT            │ 3000              │ Docker 及 Node 本地部署监听端口  │
+└─────────────────┴───────────────────┴──────────────────────────────────┘
+```
 
-### 1. ☁️ Cloudflare Pages 部署 (推荐，支持 D1 与 R2)
+---
 
-1. Fork 本仓库至您的 GitHub / GitLab 账号。
-2. 登录 Cloudflare 控制台，进入 **Workers and Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
-3. 构建参数配置：
-   - **Framework preset**: `Vite`
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 环境变量设置（可选）：
-   - `PASSWORD`: 设置独立访问密码（默认：`whitefox5`）
-5. D1 数据库与 R2 绑定：
-   - 在 Pages 项目设置中进入 **Functions** -> **D1 Database Bindings**，添加绑定名称 `DB`。
-   - 在 **R2 Bucket Bindings** 添加绑定名称 `R2_BUCKET`。
+## 🚀 部署指南 (支持拉取部署与上传部署)
+
+本项目支持 **拉取部署**（Git 绑定自动构建）与 **上传部署**（直接上传 `dist` 打包文件）。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+
+---
+
+### 1. ☁️ Cloudflare Pages 部署 (支持 Git 拉取与 ZIP 直接上传)
+
+#### 方式 A：Git 关联拉取部署 (推荐)
+1. Fork 本仓库至您的 GitHub 账号。
+2. 登录 Cloudflare 控制台 -> **Workers 和 Pages** -> **创建应用程序** -> **Pages** -> **连接到 Git**。
+3. 构建配置参数：
+   - **框架预设 (Framework preset)**: `Vite`
+   - **构建命令 (Build command)**: `npm run build`
+   - **输出目录 (Build output directory)**: `dist`
+4. 环境变量（可选）：添加 `PASSWORD`。
+5. 绑定 D1 数据库与 R2 存储（在 Pages **设置 -> 函数 -> D1 数据库绑定** 中添加 `DB` 绑定）。
+
+#### 方式 B：打包文件直接上传部署 (直接上到 CF Pages)
+1. 在本地运行命令打包编译静态文件：
+   ```bash
+   npm install && npm run build
+   ```
+2. 登录 Cloudflare Pages -> 选择 **上传资产 (Upload assets)**。
+3. 将编译好的 `dist` 文件夹上传，Cloudflare Pages 将直接完成全站部署！
+4. 本项目内置 `public/_redirects` (`/* /index.html 200`) 与 `public/_routes.json`，确保 Cloudflare Pages 刷新路由不抛 404，具备强大的兼容性。
+
+---
 
 ### 2. 📐 Vercel 一键部署
 
-1. 关联 GitHub 仓库并导入 Vercel。
-2. Vercel 将自动读取根目录下的 `vercel.json` 配置文件。
+1. 点击上方 **Deploy with Vercel** 按钮或导入 GitHub 仓库。
+2. Vercel 将自动识别根目录的 `vercel.json` 配置文件。
 3. 构建命令设为 `npm run build`，输出目录设为 `dist`。
-4. 添加环境变量 `PASSWORD` 后点击 **Deploy**。
+4. 添加环境变量 `PASSWORD` 即可完成部署。
+
+---
 
 ### 3. 🐳 Docker & Docker Compose 部署 (VPS / 服务器)
 
 ```bash
-# 克隆仓库
+# 克隆仓库 (拉取部署)
 git clone https://github.com/your-username/whitefox5.git
 cd whitefox5
 
-# 使用 Docker Compose 启动容器服务
+# 使用 Docker Compose 一键启动
 docker-compose up -d --build
 ```
-服务启动后即可通过 `http://<您的服务器IP>:3000` 访问。
-
-### 4. ☁️ 腾讯云 (Tencent Cloud Serverless / 云开发) 部署
-
-1. 在腾讯云 EdgeOne / Webify / Serverless 控制台新建 Web 应用。
-2. 绑定 Git 仓库，构建命令填 `npm run build`，发布目录填 `dist`。
-3. 添加路由 Rewrite 规则：`/*` -> `/index.html` (SPA 单页路由支持)。
-
-### 5. ☁️ 阿里云 (Alibaba Cloud ESA / OSS / 基础服务器) 部署
-
-- **ESA / 静态网站托管**：把构建生成的 `dist/` 静态文件上传至阿里云 OSS 或 ESA，配置 404 Rewrite 转向 `index.html`。
-- **ECS 传统服务器**：使用 Nginx 托管：
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        root /var/www/whitefox5/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api/proxy {
-        proxy_pass http://localhost:3000/api/proxy;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-### 6. 🌐 Netlify / Zeabur / Render 一键部署
-
-- **Netlify**: 项目自带 `netlify.toml`，自动配置 SPA 路由与 `npm run build` 构建。
-- **Zeabur / Render**: 导入 Git 仓库，选择 Node.js 或 Static Environment，构建命令 `npm run build`，发布路径 `dist`。
+服务启动后通过 `http://<您的服务器IP>:3000` 即可访问。
 
 ---
 
-## 🛠️ 本地开发与环境配置
+### 4. 🌐 腾讯云 / 阿里云 / Netlify / Zeabur / Render 部署
 
-```bash
-# 1. 克隆代码库
-git clone https://github.com/your-username/whitefox5.git
-cd whitefox5
+- **Netlify**: 自带 `netlify.toml`，导入仓库点击部署即可。
+- **腾讯云 EdgeOne / 阿里云 ESA**: 将 `dist` 文件夹直接上传至 OSS / 静态托管，配置 404 重定向至 `index.html`。
+- **Nginx 传统服务器部署**：参考项目自带的 `nginx.conf` 配置代理反向解析与缓存。
 
-# 2. 安装项目依赖
-npm install
+---
 
-# 3. 启动本地 Vite 开发服务器
-npm run dev
+## 🛠️ 三大流畅看片技术 (解决源站卡顿)
 
-# 4. 编译打包生成产物
-npm run build
-```
+1. **Nginx 代理缓存 (Proxy Caching)**：
+   - 通过本地/边缘反向代理缓存 M3U8 切片与 MP4 片段，降低源站响应延迟。
+2. **预加载 + 预连接 (Preload & Preconnect)**：
+   - 网页预连接常见 CMS 边缘节点（`<link rel="preconnect">`），播放器内置 **180 秒预加载缓存 Switch**，暂停时自动充能缓存。
+3. **多码率自适应切换 (Adaptive Bitrate Down to 360P)**：
+   - 支持 360P、480P、720P、1080P 自适应降级与手动切换，默认 360P 极速省流模式，弱网环境下流畅看片不卡顿。
+
+---
+
+## 🌟 核心功能一览
+
+- 🔒 **安全密码保护**：需输入独立密码方可使用，支持 30 天持久免登录 session。
+- 🌓 **白天 / 夜间模式**：一键无缝切换亮色与暗色模式。
+- 🔄 **恢复默认设置**：设置面板提供一键重置功能。
+- 📜 **历史记录 & 删除功能**：保存多达 350+ 条播放历史，支持精准断点续播与单条/批量一键删除。
+- 🔎 **全站集合聚合搜索**：支持并发抓取 20+ 内置接口，按电影、电视剧、港剧、台剧、动漫分类过滤。
+- 🖼️ **省流海报图**：内置 SVG 矢量占位图与 HTTP/HTTPS 代理，解决海报图失效或跨域无法显示问题。
+- ⬇️ **播放页下载与下载页播放**：播放页提供一键复制解析直链与下载选项，下载页同样支持 M3U8 在线播放预览。
+- 🏠 **返回主界面按键**：播放页与解析页均带有直达主页的快速导航按钮。
+- ⏭️ **上下集切换功能**：播放页提供“上一集”与“下一集”便捷按键。
+- 🔞 **成人影片专栏**：可自由开启/关闭成人专区，自动配置互联网成人影片 API。
 
 ---
 
