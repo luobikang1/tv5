@@ -279,7 +279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [cdnEnabled, setCdnEnabledState] = useState<boolean>(() => {
-    return localStorage.getItem(STORAGE_KEYS.CDN_ENABLED) !== 'false';
+    return localStorage.getItem(STORAGE_KEYS.CDN_ENABLED) === 'true';
   });
 
   const [showAdultColumn, setShowAdultColumnState] = useState<boolean>(() => {

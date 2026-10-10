@@ -56,6 +56,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
     isPortrait: false,
   });
 
+  // CDN is active ONLY when BOTH Settings CDN switch and Player CDN button are enabled
+  const isCdnActive = cdnEnabled && preloadCacheEnabled;
+
   const formatTime = (secs: number) => {
     if (!secs || isNaN(secs)) return '00:00';
     const m = Math.floor(secs / 60);
@@ -65,7 +68,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
 
   const getPlayableUrl = (rawUrl: string) => {
     let cleanUrl = rawUrl.trim();
-    if (!cdnEnabled) return cleanUrl;
+    if (!isCdnActive) return cleanUrl;
     const isHttpsPage = window.location.protocol === 'https:';
     if (isHttpsPage && cleanUrl.startsWith('http:') && !cleanUrl.includes('/api/proxy')) {
       return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
@@ -95,9 +98,9 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
       }
 
       // 弱网 30~45 秒最稳（默认 35s maxBufferLength），开启预加载按钮后提升到 180s (3 分钟)
-      const maxBufLen = preloadCacheEnabled ? 180 : 35;
-      const maxMaxBufLen = preloadCacheEnabled ? 300 : 45;
-      const maxBufSize = preloadCacheEnabled ? 120 * 1024 * 1024 : 35 * 1024 * 1024;
+      const maxBufLen = isCdnActive ? 180 : 35;
+      const maxMaxBufLen = isCdnActive ? 300 : 45;
+      const maxBufSize = isCdnActive ? 120 * 1024 * 1024 : 35 * 1024 * 1024;
 
       const hls = new Hls({
         enableWorker: true,
@@ -118,7 +121,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
         manifestLoadingTimeOut: 35000,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
-          if (!cdnEnabled) return;
+          if (!isCdnActive) return;
           // Ensure cross-origin / mixed-content requests pass through proxy cleanly
           const isHttpsPage = window.location.protocol === 'https:';
           const isCrossOrHttp = (isHttpsPage && requestUrl.startsWith('http:')) || !requestUrl.startsWith(window.location.origin);
@@ -494,16 +497,16 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
             <div className="flex items-center space-x-2">
               <div
                 className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center space-x-1.5 shadow-sm ${
-                  !cdnEnabled
+                  !isCdnActive
                     ? 'bg-slate-500/10 border-slate-500/30 text-slate-600 dark:text-slate-400'
                     : isR2ConfiguredAndActive
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
                 }`}
               >
-                <ShieldCheck className={`w-4 h-4 ${!cdnEnabled ? 'text-slate-500' : isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
+                <ShieldCheck className={`w-4 h-4 ${!isCdnActive ? 'text-slate-500' : isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
                 <span>
-                  当前生效: {currentQualityLabel} · {!cdnEnabled ? '站内 CDN 已关闭 (直连传输)' : isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : '极速直连流传输'}
+                  当前生效: {currentQualityLabel} · {!isCdnActive ? '直连传输模式 (CDN未开启)' : isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : 'CDN 边缘代理代理传输'}
                 </span>
               </div>
 
@@ -518,7 +521,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
                     ? 'bg-fox-500 border-fox-500 text-white shadow-fox-500/20'
                     : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                 }`}
-                title="CDN 边缘节点极速加速与 180 秒预加载缓存，提升播放流畅度"
+                title="开启 CDN 边缘加速（通常不建议打开，没有多少作用还会触发限流。）"
               >
                 <Zap className="w-4 h-4" />
                 <span>{preloadCacheEnabled ? 'CDN 边缘加速已开启 (180s 缓存)' : '开启 CDN 边缘加速'}</span>

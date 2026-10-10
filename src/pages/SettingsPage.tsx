@@ -870,7 +870,7 @@ export const SettingsPage: React.FC = () => {
               {isExpanded('cdn') && (
                 <div className="space-y-4 animate-fadeIn">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    可在站内一键关闭或开启 CDN 边缘代理，无需前往域名 DNS 解析记录后台手动关闭。关闭后全站接口与流媒体将切换为站内直连模式；默认开启，不影响正常打开时的 CDN 加速使用。
+                    可在站内一键关闭或开启 CDN 边缘代理，无需前往域名 DNS 解析记录后台手动关闭。未开启设置区的 CDN 时，播放页和预览播放页的视频播放都是直连状态。开启设置和播放页的 CDN 按键后，CDN 代理加速才实现（通常不建议打开，没有多少作用还会触发限流。）
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

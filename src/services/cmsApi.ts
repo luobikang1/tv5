@@ -53,7 +53,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   } catch (err) {
     clearTimeout(id);
     // If CDN proxy is disabled in settings, do not fallback to proxy
-    const isCdnEnabled = localStorage.getItem('wf_cdn_enabled') !== 'false';
+    const isCdnEnabled = localStorage.getItem('wf_cdn_enabled') === 'true';
     if (!isCdnEnabled) {
       throw err;
     }
