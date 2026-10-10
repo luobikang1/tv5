@@ -52,6 +52,12 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     throw new Error(`Direct fetch returned ${response.status}`);
   } catch (err) {
     clearTimeout(id);
+    // If CDN proxy is disabled in settings, do not fallback to proxy
+    const isCdnEnabled = localStorage.getItem('wf_cdn_enabled') !== 'false';
+    if (!isCdnEnabled) {
+      throw err;
+    }
+
     // Proxy Fallback to bypass CORS & Network Timeout
     const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
     const proxyController = new AbortController();

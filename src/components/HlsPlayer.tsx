@@ -29,7 +29,7 @@ interface HlsPlayerProps {
 export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 0, onEnded, onTimeProgress }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const { defaultResolution } = useApp();
+  const { defaultResolution, cdnEnabled } = useApp();
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -65,6 +65,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
 
   const getPlayableUrl = (rawUrl: string) => {
     let cleanUrl = rawUrl.trim();
+    if (!cdnEnabled) return cleanUrl;
     const isHttpsPage = window.location.protocol === 'https:';
     if (isHttpsPage && cleanUrl.startsWith('http:') && !cleanUrl.includes('/api/proxy')) {
       return `/api/proxy?url=${encodeURIComponent(cleanUrl)}`;
@@ -117,6 +118,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
         manifestLoadingTimeOut: 35000,
         xhrSetup: (xhr, requestUrl) => {
           xhr.withCredentials = false;
+          if (!cdnEnabled) return;
           // Ensure cross-origin / mixed-content requests pass through proxy cleanly
           const isHttpsPage = window.location.protocol === 'https:';
           const isCrossOrHttp = (isHttpsPage && requestUrl.startsWith('http:')) || !requestUrl.startsWith(window.location.origin);
@@ -196,7 +198,7 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
         hlsRef.current.destroy();
       }
     };
-  }, [url, preloadCacheEnabled, defaultResolution]);
+  }, [url, preloadCacheEnabled, defaultResolution, cdnEnabled]);
 
   // Keep pre-buffering video ahead when paused if preload cache is enabled
   useEffect(() => {
@@ -492,14 +494,16 @@ export const HlsPlayer: React.FC<HlsPlayerProps> = ({ url, title, initialTime = 
             <div className="flex items-center space-x-2">
               <div
                 className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center space-x-1.5 shadow-sm ${
-                  isR2ConfiguredAndActive
+                  !cdnEnabled
+                    ? 'bg-slate-500/10 border-slate-500/30 text-slate-600 dark:text-slate-400'
+                    : isR2ConfiguredAndActive
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                     : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
                 }`}
               >
-                <ShieldCheck className={`w-4 h-4 ${isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
+                <ShieldCheck className={`w-4 h-4 ${!cdnEnabled ? 'text-slate-500' : isR2ConfiguredAndActive ? 'text-emerald-500' : 'text-amber-500'}`} />
                 <span>
-                  当前生效: {currentQualityLabel} · {isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : '极速直连流传输'}
+                  当前生效: {currentQualityLabel} · {!cdnEnabled ? '站内 CDN 已关闭 (直连传输)' : isR2ConfiguredAndActive ? 'R2 存储节点起用 (流畅看片)' : '极速直连流传输'}
                 </span>
               </div>
 

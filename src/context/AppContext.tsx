@@ -105,6 +105,10 @@ interface AppContextType {
   removeCustomApi: (id: string) => void;
   resetDefaultApis: () => void;
 
+  // CDN Toggle
+  cdnEnabled: boolean;
+  setCdnEnabled: (enabled: boolean) => void;
+
   // Adult Section
   showAdultColumn: boolean;
   setShowAdultColumn: (show: boolean) => void;
@@ -170,6 +174,7 @@ const STORAGE_KEYS = {
   HISTORY: 'wf_watch_history',
   FAVORITES: 'wf_favorites',
   D1_ENABLED: 'wf_d1_enabled',
+  CDN_ENABLED: 'wf_cdn_enabled',
   UNLOCKED_UNTIL: 'wf_unlocked_until',
   DEVICES: 'wf_devices',
   USERS_LIST: 'wf_registered_users',
@@ -272,6 +277,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
   };
+
+  const [cdnEnabled, setCdnEnabledState] = useState<boolean>(() => {
+    return localStorage.getItem(STORAGE_KEYS.CDN_ENABLED) !== 'false';
+  });
 
   const [showAdultColumn, setShowAdultColumnState] = useState<boolean>(() => {
     return localStorage.getItem(STORAGE_KEYS.ADULT) === 'true';
@@ -790,6 +799,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.D1_ENABLED, enabled ? 'true' : 'false');
   };
 
+  const setCdnEnabled = (enabled: boolean) => {
+    setCdnEnabledState(enabled);
+    localStorage.setItem(STORAGE_KEYS.CDN_ENABLED, enabled ? 'true' : 'false');
+    if (d1Enabled) {
+      const syncKey = currentUser ? `wf_user_${currentUser}` : 'wf_user_settings';
+      syncToD1(syncKey, {
+        history: historyList,
+        favorites: favoritesList,
+        resolution: defaultResolution,
+        bgColor: customBgColor,
+        bgImage: customBgImage,
+        heroBgImage: customHeroBgImage,
+        cdnEnabled: enabled,
+      });
+    }
+  };
+
   // Notebook Actions
   const addNote = (title: string, content: string, category = '默认') => {
     const nowStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
@@ -1048,6 +1074,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cloudFolders,
         addFolder,
         deleteFolder,
+        cdnEnabled,
+        setCdnEnabled,
         d1Enabled,
         setD1Enabled,
         manualSyncD1,

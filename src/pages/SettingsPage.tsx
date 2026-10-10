@@ -105,6 +105,8 @@ export const SettingsPage: React.FC = () => {
     resetDefaultApis,
     showAdultColumn,
     setShowAdultColumn,
+    cdnEnabled,
+    setCdnEnabled,
     d1Enabled,
     setD1Enabled,
     manualSyncD1,
@@ -790,6 +792,10 @@ export const SettingsPage: React.FC = () => {
           const [cdnHealth, setCdnHealth] = React.useState<'checking' | 'active' | 'inactive'>('checking');
 
           React.useEffect(() => {
+            if (!cdnEnabled) {
+              setCdnHealth('inactive');
+              return;
+            }
             let active = true;
             const checkCdn = async () => {
               try {
@@ -806,7 +812,7 @@ export const SettingsPage: React.FC = () => {
             };
             checkCdn();
             return () => { active = false; };
-          }, []);
+          }, [cdnEnabled]);
 
           return (
             <>
@@ -817,7 +823,12 @@ export const SettingsPage: React.FC = () => {
                     <h2>CDN 接入状态查看区 (缓存数值与设定)</h2>
                   </div>
                   {/* Dynamic CDN Status Indicator Light */}
-                  {cdnHealth === 'active' ? (
+                  {!cdnEnabled ? (
+                    <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                      <span>🔴 站内 CDN 边缘代理已手动关闭 (直连模式)</span>
+                    </div>
+                  ) : cdnHealth === 'active' ? (
                     <div className="px-3 py-1 rounded-full text-xs font-extrabold flex items-center space-x-1.5 shadow-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                       <span>🟢 后台 CDN 边缘节点已接入生效</span>
@@ -835,19 +846,31 @@ export const SettingsPage: React.FC = () => {
                   )}
                 </div>
 
-                <button
-                  onClick={() => toggleSection('cdn')}
-                  className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
-                >
-                  {isExpanded('cdn') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  <span>{isExpanded('cdn') ? '收起界面 ▲' : '展开界面 ▼'}</span>
-                </button>
+                <div className="flex items-center space-x-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={cdnEnabled}
+                      onChange={(e) => setCdnEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+                  </label>
+
+                  <button
+                    onClick={() => toggleSection('cdn')}
+                    className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1"
+                  >
+                    {isExpanded('cdn') ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <span>{isExpanded('cdn') ? '收起界面 ▲' : '展开界面 ▼'}</span>
+                  </button>
+                </div>
               </div>
 
               {isExpanded('cdn') && (
                 <div className="space-y-4 animate-fadeIn">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    实时监控全站 CDN 边缘节点分层缓存规则与流媒体加速设定，确保弱网与高并发下的播放稳定性。
+                    可在站内一键关闭或开启 CDN 边缘代理，无需前往域名 DNS 解析记录后台手动关闭。关闭后全站接口与流媒体将切换为站内直连模式；默认开启，不影响正常打开时的 CDN 加速使用。
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
