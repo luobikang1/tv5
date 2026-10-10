@@ -4,45 +4,75 @@
 ![License](https://img.shields.io/badge/License-MIT-blue.style=for-the-badge)
 ![Cloudflare Pages](https://img.shields.io/badge/Deployment-Cloudflare%20Pages%20%7C%20Vercel%20%7C%20Docker-success?style=for-the-badge)
 
-**白狐5** 是一款基于 Vite + React + TypeScript + Tailwind CSS 构建的极简高画质影视聚合与多端云服务平台。支持 20+ 互联网 CMS 源站接口直连与边缘代理防护、HLS.js 预加载缓存、多码率自适应切换（包含 360P / 720P / 1080P）、Cloudflare R2 对象存储全量可视化管理、Cloudflare D1 数据库实时同步（新数据覆盖老数据）、随身云笔记本 (支持导出 TXT) 以及全员互动留言区 (支持图片与回复引用)。
+**白狐5** 是一款基于 Vite + React + TypeScript + Tailwind CSS 构建的极简高画质影视聚合与多端云服务平台。功能与月亮TV基本一致，面板名称为**白狐5**。支持 20+ 互联网 CMS 源站接口直连与边缘代理防护、HLS.js 预加载缓存、多码率自适应切换（默认 360P / 可低至 360P / 480P / 720P / 1080P）、Cloudflare R2 对象存储全量可视化管理、Cloudflare D1 数据库实时同步（新数据覆盖老数据）、全站聚合搜索、暗黑/白天模式切换、视频下载与播放、省流海报防护、成人视频专栏及互联网成人 API 自动配置等功能。
 
 ---
 
-## 🌟 核心特色与功能亮点
+## 📦 主要依赖 (Key Dependencies)
 
-### 1. 🎬 极速流媒体播放与多码率切换
-- **HLS.js 边缘切片解析**：支持 M3U8 视频流解析与防卡顿优化（`maxBufferHole` / `nudgeMaxRetry` / `maxStarvationDelay`）。
-- **CDN 代理与预加载缓存 switch**：未开启设置区的 CDN 时，播放页和预览播放页的视频播放均为直连状态。开启设置和播放页的 CDN 按键后，CDN 代理加速才实现（通常不建议打开，没有多少作用还会触发限流。开启后 paused 状态自动预加载 180 秒视频缓存）。
-- **自适应码率切换**：实时解析并显示当前比特率，支持 360P / 720P / 1080P 自适应切换。
-- **画幅与亮度/音量调节**：支持 9:16 竖屏与非标准视频画幅缩放适配，提供手势/滑块调节。
-
-### 2. ☁️ Cloudflare R2 云盘全量可视化管理
-- **文件分类文件夹管理**：内置【🎬 视频】、【🎵 音乐】、【🖼️ 图片】、【📄 文档】与【📦 其他】分类文件夹，支持选择目标文件夹上传与跨文件夹批量/单项移动。
-- **批量文件上传与下载**：支持多文件同时选择并批量上传，实时显示总体百分比进度条。
-- **删除确认保护**：单文件与批量删除增加确认提问，防止误操作。
-- **批量取消选择**：批量管理工具栏内置“一键取消选择”按钮。
-- **全量可视化与 D1 实时同步**：一键同步 R2 云盘，使用**新数据覆盖老数据**策略保证多端数据一致。
-
-### 3. 📝 随身云笔记本与留言区互动
-- **随身云笔记本**：记录观影清单或个人备忘，支持按分类检索，并可以**一键导出下载为 UTF-8 `.txt` 文本文件**。
-- **全员留言交流区**：全员实时留言，支持图文发布、**针对特定留言一键引用回复**，管理员支持独立清理图片以节省云端存储空间。
-
-### 4. 🎨 系统设置与全局自定义
-- **折叠选项与状态持久化**：所有设置模块默认折叠，展开后状态存储于 `localStorage`，刷新页面不收起。
-- **主题调色与全局背景**：提供预设主题调色按键（经典蓝绿、白狐橙红、深邃极夜等），支持上传全站背景图片及**首页介绍区全图无裁剪展示**模式。
-- **中英双语切换**：提供 `zh` (简体中文) 与 `en` (English) 切换。
-- **安全密码与持久会话**：支持设置独立访问密码，一次解锁即可保持 **30 天持久免登录**。
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  主要依赖清单                                                           │
+├───────────────────────┬─────────────────┬──────────────────────────────┤
+│ 依赖名称 (Package)     │ 版本 (Version)   │ 功能说明 (Description)       │
+├───────────────────────┼─────────────────┼──────────────────────────────┤
+│ hls.js                │ ^1.5.8          │ HLS 视频流切片解析与多码率播放  │
+│ react                 │ ^18.2.0         │ 响应式 UI 核心框架           │
+│ react-dom             │ ^18.2.0         │ React DOM 渲染引擎           │
+│ react-router-dom      │ ^6.22.3         │ 单页应用 SPA 路由管理        │
+│ lucide-react          │ ^0.344.0        │ 高清图标组件库               │
+│ tailwindcss           │ ^3.4.1          │ 响应式 CSS 样式库            │
+└───────────────────────┴─────────────────┴──────────────────────────────┘
+```
 
 ---
 
-## 🚀 部署指南 (支持全平台一键部署)
+## 🔑 核心环境变量 (Key Environment Variables)
 
-本项目原生支持多种云平台及自建服务器部署，支持静态与 Serverless 函数代理。
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  环境变量配置 (Boxed Environment Variables)                             │
+├───────────────────┬───────────────────┬────────────────────────────────┤
+│ 变量名 (Variable)  │ 默认值 (Default)   │ 说明 (Description)             │
+├───────────────────┼───────────────────┼────────────────────────────────┤
+│ PASSWORD          │ whitefox5         │ 站点访问独立安全密码            │
+│ VITE_PASSWORD     │ whitefox5         │ 构建时注入的前端初始解密密码    │
+│ CF_D1_BINDING     │ DB                │ Cloudflare D1 数据库绑定名称   │
+│ R2_BUCKET         │ R2_BUCKET         │ Cloudflare R2 对象存储绑定名称 │
+│ PORT              │ 3000              │ Docker / Node 服务监听端口     │
+│ NODE_ENV          │ production        │ 运行环境标识                    │
+└───────────────────┴───────────────────┴────────────────────────────────┘
+```
+
+---
+
+## ⚡ 三大防卡顿技术 (Anti-Lag Video Streaming Technologies)
+
+为了解决由于源站响应缓慢、跨网传输延迟造成的播放卡顿问题，**白狐5** 整合了以下三种关键播放优化技术：
+
+1. **Nginx 代理缓存 (Nginx Proxy Caching)**：
+   - 部署于自建 VPS 或 Nginx 节点时，自动拦截 M3U8 切片与 `.ts` 视频文件。
+   - `proxy_cache VIDEO_CACHE` 缓存命中后直接由 Nginx 节点高带宽响应，彻底隔离源站响应慢的问题。
+
+2. **预加载 + 预连接 (Preload & Preconnect)**：
+   - 页面初始化时自动对常用 CMS 视频域名（如 `bfzyapi.com`、`ikunzyapi.com` 等）建立 TCP/TLS 预连接（`preconnect` 与 `dns-prefetch`）。
+   - 播放器开启“CDN 边缘加速”模式后，暂停状态自动后台预加载高达 180 秒视频缓存，实现即点即播不卡顿。
+
+3. **多码率自适应 (Multi-Bitrate Adaptive Streaming down to 360P)**：
+   - 支持自动检测并实时解析 HLS Master Playlist 的不同码率切片。
+   - 默认采用 **360P 极速省流** 分辨率，弱网环境下亦可稳定秒播；用户可自由在 360P / 480P / 720P / 1080P 及自适应码率间无缝切换。
+
+---
+
+## 🚀 部署指南 (支持全平台一键部署与拉取/上传)
 
 ### 1. ☁️ Cloudflare Pages 部署 (推荐，支持 D1 与 R2)
 
+支持直接拉取 GitHub 仓库部署或上传打包构建产物 `dist` 目录部署。
+
+#### 方式 A：拉取部署 (Git Connect)
 1. Fork 本仓库至您的 GitHub / GitLab 账号。
-2. 登录 Cloudflare 控制台，进入 **Workers and Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
+2. 登录 Cloudflare Dashboard -> **Workers and Pages** -> **Create application** -> **Pages** -> **Connect to Git**。
 3. 构建参数配置：
    - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
@@ -50,60 +80,59 @@
 4. 环境变量设置（可选）：
    - `PASSWORD`: 设置独立访问密码（默认：`whitefox5`）
 5. D1 数据库与 R2 绑定：
-   - 在 Pages 项目设置中进入 **Functions** -> **D1 Database Bindings**，添加绑定名称 `DB`。
+   - 在 Pages 项目设置中进入 **Settings** -> **Functions** -> **D1 Database Bindings**，添加绑定名称 `DB`。
    - 在 **R2 Bucket Bindings** 添加绑定名称 `R2_BUCKET`。
 
-### 2. 📐 Vercel 一键部署
+#### 方式 B：上传部署 (Direct Upload)
+1. 本地运行 `npm run build` 生成 `dist` 文件夹。
+2. 在 Cloudflare Pages 中选择 **Upload Assets**，将 `dist` 文件夹打包上传即可完成部署。
 
-1. 关联 GitHub 仓库并导入 Vercel。
+> **⚠️ 注意事项 (Precautions)**：
+> - 本项目在 `public/_redirects` 中内置了 `/* /index.html 200` 路由重定向规则，确保单页应用 SPA 在 Cloudflare Pages 刷新时不报 404 错误。
+> - 在 `functions/api/proxy.ts` 中集成了 Worker 代理，完美解决跨域 CORS 与 HTTP 视频流加载卡顿问题。
+
+---
+
+### 2. 📐 Vercel 一键部署 (1-Click Vercel Deployment)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
+
+1. 点击上方部署按钮或在 Vercel 中导入 GitHub 仓库。
 2. Vercel 将自动读取根目录下的 `vercel.json` 配置文件。
-3. 构建命令设为 `npm run build`，输出目录设为 `dist`。
-4. 添加环境变量 `PASSWORD` 后点击 **Deploy**。
+3. 构建参数：
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. 添加环境变量：
+   - `PASSWORD`: `whitefox5`
+5. 点击 **Deploy** 即可在一分钟内完成全球 CDN 部署。
+
+---
 
 ### 3. 🐳 Docker & Docker Compose 部署 (VPS / 服务器)
 
 ```bash
-# 克隆仓库
+# 1. 克隆代码库
 git clone https://github.com/your-username/whitefox5.git
 cd whitefox5
 
-# 使用 Docker Compose 启动容器服务
+# 2. 一键启动 Docker Compose 容器服务
 docker-compose up -d --build
 ```
-服务启动后即可通过 `http://<您的服务器IP>:3000` 访问。
+服务启动后访问 `http://<您的服务器IP>:8080` 即可使用（内置 Nginx 代理缓存与 gzip 压缩）。
 
-### 4. ☁️ 腾讯云 (Tencent Cloud Serverless / 云开发) 部署
+---
 
-1. 在腾讯云 EdgeOne / Webify / Serverless 控制台新建 Web 应用。
-2. 绑定 Git 仓库，构建命令填 `npm run build`，发布目录填 `dist`。
-3. 添加路由 Rewrite 规则：`/*` -> `/index.html` (SPA 单页路由支持)。
+### 4. ☁️ 腾讯云与阿里云部署
 
-### 5. ☁️ 阿里云 (Alibaba Cloud ESA / OSS / 基础服务器) 部署
+- **腾讯云 Webify / EdgeOne**：导入仓库，构建命令填 `npm run build`，发布目录填 `dist`，配置路由 Rewrite `/*` -> `/index.html`。
+- **阿里云 OSS / ESA / ECS**：上传 `dist/` 静态文件，将 404 页面重定向至 `index.html`。传统 ECS 部署可直接配合 Nginx 反向代理与缓存。
 
-- **ESA / 静态网站托管**：把构建生成的 `dist/` 静态文件上传至阿里云 OSS 或 ESA，配置 404 Rewrite 转向 `index.html`。
-- **ECS 传统服务器**：使用 Nginx 托管：
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
+---
 
-    location / {
-        root /var/www/whitefox5/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
+### 5. 🌐 Netlify / Zeabur / Render 一键部署
 
-    location /api/proxy {
-        proxy_pass http://localhost:3000/api/proxy;
-        proxy_set_header Host $host;
-    }
-}
-```
-
-### 6. 🌐 Netlify / Zeabur / Render 一键部署
-
-- **Netlify**: 项目自带 `netlify.toml`，自动配置 SPA 路由与 `npm run build` 构建。
-- **Zeabur / Render**: 导入 Git 仓库，选择 Node.js 或 Static Environment，构建命令 `npm run build`，发布路径 `dist`。
+- **Netlify**: 项目自带 `netlify.toml`，自动配置 SPA 路由重定向。
+- **Zeabur / Render**: 导入 Git 仓库，选择 Static Environment，构建命令 `npm run build`，发布路径 `dist`。
 
 ---
 
@@ -114,13 +143,13 @@ server {
 git clone https://github.com/your-username/whitefox5.git
 cd whitefox5
 
-# 2. 安装项目依赖
+# 2. 安装依赖
 npm install
 
-# 3. 启动本地 Vite 开发服务器
+# 3. 启动开发服务器
 npm run dev
 
-# 4. 编译打包生成产物
+# 4. 编译打包生成部署产物
 npm run build
 ```
 
